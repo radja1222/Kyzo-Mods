@@ -1,0 +1,12 @@
+"use client";
+import {useEffect,useState} from "react";
+
+declare global { interface Window { snap:any } }
+
+export function CheckoutClient({mod}:{mod:any}){
+ const [loading,setLoading]=useState(false); const [error,setError]=useState(""); const [orderId,setOrderId]=useState(""); const [status,setStatus]=useState("pending");
+ useEffect(()=>{const script=document.createElement("script");script.src=process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION==="true"?"https://app.midtrans.com/snap/snap.js":"https://app.sandbox.midtrans.com/snap/snap.js";script.setAttribute("data-client-key",process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY||"");script.async=true;document.body.appendChild(script);return()=>{document.body.removeChild(script)}},[]);
+ useEffect(()=>{if(!orderId)return;const t=setInterval(async()=>{const r=await fetch(`/api/orders/${orderId}`,{cache:"no-store"});if(!r.ok)return;const j=await r.json();setStatus(j.status);if(j.status==="paid"){clearInterval(t);location.href=`/mod/${mod.slug}`;}},3000);return()=>clearInterval(t)},[orderId,mod.slug]);
+ async function pay(){setLoading(true);setError("");try{const r=await fetch("/api/orders/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mod_id:mod.id})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Gagal membuat transaksi");setOrderId(j.order_id);if(!window.snap)throw new Error("Checkout GoPay belum siap. Coba lagi beberapa detik.");window.snap.pay(j.token,{onSuccess:()=>setStatus("paid"),onPending:()=>setStatus("pending"),onError:()=>setStatus("failed"),onClose:()=>{}});}catch(e:any){setError(e.message)}finally{setLoading(false)}}
+ return <div className="form"><div className="formCard"><span className="tag">SECURE CHECKOUT · GOPAY</span><h1>{mod.title}</h1><p className="muted">Pembayaran diproses melalui Midtrans dengan metode GoPay.</p><h2 style={{color:"var(--orange2)"}}>Rp {Number(mod.price).toLocaleString("id-ID")}</h2>{error&&<div className="alert">{error}</div>}<button className="btn primary" style={{width:"100%"}} disabled={loading} onClick={pay}>{loading?"Menyiapkan pembayaran…":"Bayar dengan GoPay"}</button>{orderId&&<div className="alert" style={{marginTop:15}}>Order: {orderId}<br/>Status: <b>{status}</b>{status==="pending"&&" — selesaikan pembayaran di GoPay. Halaman akan otomatis membuka mod setelah pembayaran terverifikasi."}</div>}<p className="hint">Jangan tutup halaman sebelum menyelesaikan pembayaran. Akses download hanya dibuka setelah server menerima status pembayaran yang terverifikasi.</p></div></div>
+}
