@@ -1,0 +1,1 @@
+import {NextResponse} from "next/server";import {supabaseServer} from "@/lib/supabase-server";export async function GET(req:Request){const s=await supabaseServer();await s.auth.signOut();return NextResponse.redirect(new URL("/",req.url))}
