@@ -4,8 +4,8 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [],
   },
-  // INI BENAR! TIDAK ADA "experimental" DI SINI.
-  skipMiddlewareUrlNormalize: true,
+  // Ganti nama ini sesuai instruksi Vercel:
+  skipProxyUrlNormalize: true,
 };
 
 export default nextConfig;
