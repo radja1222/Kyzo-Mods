@@ -11,16 +11,15 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [{ "name": "next" }],
     
-    // 👇 TAMBAHKAN 2 BARIS INI DI BAWAHNYA:
-    "baseUrl": ".",
+    // 👇 HANYA PERLU BAGIAN INI (HAPUS "baseUrl"):
     "paths": {
       "@/*": ["./*"]
     }
   },
   "include": ["next-env.d.ts", ".next/types/**/*.ts", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
-}
+    }
