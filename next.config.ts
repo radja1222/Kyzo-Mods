@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [],
   },
-  // Ganti nama ini sesuai instruksi Vercel:
+  // Ganti dengan nama yang benar sesuai instruksi Vercel:
   skipProxyUrlNormalize: true,
 };
 
