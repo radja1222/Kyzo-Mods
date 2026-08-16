@@ -1,11 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-// PERHATIKAN: Nama fungsinya harus "proxy", BUKAN "middleware"
-export function proxy(request: NextRequest) {
+export function proxy() {
   return NextResponse.next();
 }
-
-export const config = {
-  matcher: '/:path*',
-};
