@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// PERHATIKAN: Nama fungsi harus 'proxy', bukan 'middleware'
+// PERHATIKAN: Nama fungsinya harus "proxy", BUKAN "middleware"
 export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
