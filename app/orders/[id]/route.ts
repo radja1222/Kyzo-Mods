@@ -1,2 +1,0 @@
-import {NextResponse} from "next/server";import {supabaseServer} from "@/lib/supabase-server";
-export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){const {id}=await params;const s=await supabaseServer();const {data:{user}}=await s.auth.getUser();if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});const {data:o}=await s.from("orders").select("id,status,amount,mod_id").eq("id",id).eq("user_id",user.id).single();if(!o)return NextResponse.json({error:"Order not found"},{status:404});return NextResponse.json(o)}
