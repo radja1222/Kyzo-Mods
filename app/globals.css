@@ -11,4 +11,213 @@
 .footer{margin-top:70px;border-top:1px solid var(--line);padding:40px 0;color:var(--muted)}.footerGrid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:30px}.footer a,.footer span{display:block;margin-top:9px;font-size:13px}
 @media(max-width:800px){.heroGrid,.detail,.footerGrid{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.adminCards{grid-template-columns:1fr 1fr}.links{gap:10px;font-size:12px}}
 @media(max-width:520px){.grid{grid-template-columns:1fr}.hero{padding-top:55px}.hero h1{letter-spacing:-2px;font-size:42px}.links a:nth-child(1),.links a:nth-child(2){display:none}}
+
+/* =========================
+   KYZOMODS LOGO
+========================= */
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logoImage {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow:
+    0 0 0 1px rgba(255,109,0,.25),
+    0 8px 25px rgba(255,109,0,.18);
+}
+
+.logoText {
+  font-weight: 950;
+  font-size: 17px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.logoText b {
+  color: var(--orange);
+}
+
+
+/* =========================
+   FOOTER
+========================= */
+
+.footer {
+  margin-top: 100px;
+  border-top: 1px solid rgba(255,255,255,.07);
+  background:
+    radial-gradient(
+      circle at 20% 0,
+      rgba(255,109,0,.08),
+      transparent 30%
+    ),
+    #05070a;
+  padding-top: 55px;
+}
+
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1.6fr .8fr .8fr;
+  gap: 60px;
+  padding-bottom: 45px;
+}
+
+.footerBrand {
+  max-width: 430px;
+}
+
+.footerLogo {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footerLogo img {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(255,109,0,.15);
+}
+
+.footerLogo strong {
+  display: block;
+  color: white;
+  font-size: 20px;
+  letter-spacing: 1px;
+}
+
+.footerLogo strong span {
+  color: var(--orange);
+}
+
+.footerLogo small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.footerBrand p {
+  margin-top: 18px;
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.footerColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footerColumn h4 {
+  margin: 0 0 5px;
+  color: white;
+  font-size: 14px;
+}
+
+.footerColumn a {
+  color: var(--muted);
+  font-size: 13px;
+  transition: .2s;
+}
+
+.footerColumn a:hover {
+  color: var(--orange2);
+  transform: translateX(3px);
+}
+
+.footerBottom {
+  border-top: 1px solid rgba(255,255,255,.06);
+  padding: 20px 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: #697384;
+  font-size: 11px;
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 700px) {
+
+  .nav {
+    height: auto;
+    min-height: 68px;
+    padding: 12px 0;
+  }
+
+  .logoImage {
+    width: 38px;
+    height: 38px;
+  }
+
+  .logoText {
+    font-size: 15px;
+  }
+
+  .links {
+    gap: 8px;
+  }
+
+  .links a {
+    font-size: 11px;
+  }
+
+  .links a:nth-child(1) {
+    display: none;
+  }
+
+  .footer {
+    margin-top: 70px;
+    padding-top: 40px;
+  }
+
+  .footerGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 35px 25px;
+  }
+
+  .footerBrand {
+    grid-column: 1 / -1;
+  }
+
+  .footerBottom {
+    flex-direction: column;
+    gap: 7px;
+  }
+}
+
+
+@media (max-width: 430px) {
+
+  .logoText {
+    display: none;
+  }
+
+  .links a:nth-child(2) {
+    display: none;
+  }
+
+  .links {
+    gap: 6px;
+  }
+
+  .pill {
+    padding: 9px 12px;
+  }
+
+  .footerGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  }
                                                                                                                                                                                                                                                                                
