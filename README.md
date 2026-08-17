@@ -41,4 +41,5 @@ Jalankan `supabase/schema.sql`. Setelah akun Owner dibuat:
 - Jangan pernah menaruh Server Key di browser.
 - Jangan menerima screenshot sebagai bukti pembayaran otomatis.
 - Jangan mengubah order menjadi `paid` dari callback browser. Hanya webhook/status terverifikasi yang membuka akses.
-- Midtrans GoPay di Snap mendukung QR/deeplink dan dapat menyesuaikan tampilan berdasarkan perangkat.
+- Midtrans GoPay di Snap mendukung QR/deeplink dan dapat menyesuaikan tampilan berdasarkan perangkat
+- Di Larang keras Menjual/Belikan Script ini paham.
