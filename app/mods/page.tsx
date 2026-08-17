@@ -9,104 +9,117 @@ export default async function Mods({
   }>;
 }) {
   const params = await searchParams;
+  const s = await supabaseServer();
 
-  const game = params.game?.trim().toLowerCase() || "";
-  const search = params.q?.trim() || "";
+  const game = params.game || "";
+  const search = params.q || "";
 
-  const supabase = await supabaseServer();
-
-  let query = supabase
+  // Ambil semua mod yang sudah approved
+  let modsQuery = s
     .from("mods")
-    .select(`
-      id,
-      title,
-      slug,
-      description,
-      mod_type,
-      price,
-      thumbnail_url,
-      downloads,
-      views,
-      created_at,
-      profiles (
-        id,
-        username,
-        avatar_url
-      ),
-      categories (
-        id,
-        name,
-        game,
-        slug
-      )
-    `)
+    .select(
+      "id,user_id,category_id,title,slug,description,mod_type,price,thumbnail_url,downloads,created_at"
+    )
     .eq("status", "approved")
     .order("created_at", {
       ascending: false,
     });
 
-  // Filter game
-  if (game === "samp" || game === "fivem") {
-    query = query.eq("categories.game", game);
-  }
-
-  // Search judul + deskripsi
-  if (search) {
-    query = query.or(
-      `title.ilike.%${search}%,description.ilike.%${search}%`
+  // Search berdasarkan judul
+  if (search.trim()) {
+    modsQuery = modsQuery.ilike(
+      "title",
+      `%${search.trim()}%`
     );
   }
 
-  const {
-    data: mods,
-    error,
-  } = await query;
+  const { data: mods, error: modsError } = await modsQuery;
 
-  if (error) {
-    console.error("KYZO MODS SEARCH ERROR:", error);
+  if (modsError) {
+    console.error("MODS ERROR:", modsError);
+  }
 
-    return (
-      <section className="section">
-        <div className="container">
-          <div className="alert">
-            Gagal mengambil data mod.
-            <br />
-            <small>{error.message}</small>
-          </div>
-        </div>
-      </section>
+  let finalMods = mods || [];
+
+  // Filter game berdasarkan kategori
+  if (game) {
+    const { data: categories } = await s
+      .from("categories")
+      .select("id")
+      .eq("game", game);
+
+    const categoryIds =
+      categories?.map((c) => c.id) || [];
+
+    finalMods = finalMods.filter((mod) =>
+      categoryIds.includes(mod.category_id)
     );
   }
+
+  // Ambil kategori
+  const categoryIds = [
+    ...new Set(
+      finalMods.map((mod) => mod.category_id)
+    ),
+  ];
+
+  const { data: categories } = categoryIds.length
+    ? await s
+        .from("categories")
+        .select("id,name,game")
+        .in("id", categoryIds)
+    : { data: [] };
+
+  // Ambil creator
+  const userIds = [
+    ...new Set(
+      finalMods.map((mod) => mod.user_id)
+    ),
+  ];
+
+  const { data: profiles } = userIds.length
+    ? await s
+        .from("profiles")
+        .select("id,username,avatar_url")
+        .in("id", userIds)
+    : { data: [] };
+
+  // Gabungkan data
+  const categoryMap = new Map(
+    (categories || []).map((c) => [
+      c.id,
+      c,
+    ])
+  );
+
+  const profileMap = new Map(
+    (profiles || []).map((p) => [
+      p.id,
+      p,
+    ])
+  );
 
   return (
     <section className="section">
       <div className="container">
 
-        {/* HEADER */}
         <div className="head">
           <div>
             <h2>Browse Mods</h2>
 
             <p className="muted">
-              Temukan mod grafik, vehicle, map,
-              script dan berbagai mod GTA.
+              SA-MP & FiveM community marketplace.
             </p>
-          </div>
-
-          <div className="modTotal">
-            {mods?.length || 0} Mods
           </div>
         </div>
 
-        {/* SEARCH */}
         <form
           className="toolbar"
           method="GET"
         >
           <input
-            type="text"
             name="q"
-            placeholder="Cari mod, graphics, vehicle..."
+            placeholder="Cari mod..."
             defaultValue={search}
           />
 
@@ -115,7 +128,7 @@ export default async function Mods({
             defaultValue={game}
           >
             <option value="">
-              Semua Game
+              Semua game
             </option>
 
             <option value="samp">
@@ -131,140 +144,139 @@ export default async function Mods({
             type="submit"
             className="btn primary"
           >
-            🔎 Search
+            Search
           </button>
         </form>
 
-        {/* RESULT */}
-        {!mods || mods.length === 0 ? (
-          <div className="emptyMods">
+        {modsError && (
+          <div className="alert">
+            Gagal mengambil data mod.
+          </div>
+        )}
 
-            <div className="emptyModsIcon">
-              🔍
-            </div>
-
+        {finalMods.length === 0 ? (
+          <div className="empty">
             <h3>
-              {search
-                ? `Mod "${search}" tidak ditemukan`
-                : "Belum ada mod tersedia"}
+              Mod tidak ditemukan
             </h3>
 
-            <p>
-              Coba gunakan kata kunci lain
-              atau pilih kategori game yang berbeda.
+            <p className="muted">
+              Belum ada mod yang sesuai
+              dengan pencarian kamu.
             </p>
-
           </div>
         ) : (
-
           <div className="grid">
 
-            {mods.map((mod: any) => (
+            {finalMods.map((mod) => {
+              const category =
+                categoryMap.get(
+                  mod.category_id
+                );
 
-              <a
-                className="card"
-                href={`/mod/${mod.slug}`}
-                key={mod.id}
-              >
+              const creator =
+                profileMap.get(
+                  mod.user_id
+                );
 
-                {/* THUMBNAIL */}
-                <div className="thumb">
+              return (
+                <a
+                  className="card"
+                  href={`/mod/${mod.slug}`}
+                  key={mod.id}
+                >
 
-                  {mod.thumbnail_url ? (
-                    <img
-                      src={mod.thumbnail_url}
-                      alt={mod.title}
-                    />
-                  ) : (
-                    <div className="noThumb">
-                      KYZO MODS
-                    </div>
-                  )}
+                  <div className="thumb">
 
-                  {/* TYPE */}
-                  <span
-                    className={
-                      mod.mod_type === "paid"
-                        ? "modType paid"
-                        : "modType free"
-                    }
-                  >
-                    {mod.mod_type === "paid"
-                      ? `Rp ${Number(
-                          mod.price
-                        ).toLocaleString("id-ID")}`
-                      : "FREE"}
-                  </span>
-
-                </div>
-
-                {/* CONTENT */}
-                <div className="body">
-
-                  {mod.categories && (
-                    <span className="tag">
-                      {mod.categories.game?.toUpperCase()}
-                      {" · "}
-                      {mod.categories.name}
-                    </span>
-                  )}
-
-                  <h3>
-                    {mod.title}
-                  </h3>
-
-                  <p>
-                    {mod.description
-                      ? mod.description.length > 100
-                        ? `${mod.description.slice(
-                            0,
-                            100
-                          )}...`
-                        : mod.description
-                      : "Tidak ada deskripsi."}
-                  </p>
-
-                  {/* META */}
-                  <div className="meta">
-
-                    <span>
-                      by{" "}
-                      {mod.profiles?.username ||
-                        "Unknown"}
-                    </span>
-
-                    <span>
-                      ↓{" "}
-                      {formatNumber(
-                        Number(mod.downloads || 0)
-                      )}
-                    </span>
+                    {mod.thumbnail_url ? (
+                      <img
+                        src={mod.thumbnail_url}
+                        alt={mod.title}
+                      />
+                    ) : (
+                      <div className="thumbPlaceholder">
+                        KYZO MODS
+                      </div>
+                    )}
 
                   </div>
 
-                </div>
+                  <div className="body">
 
-              </a>
+                    <span className="tag">
+                      {category?.game
+                        ? category.game.toUpperCase()
+                        : "GAME"}
 
-            ))}
+                      {" · "}
+
+                      {category?.name ||
+                        "Uncategorized"}
+                    </span>
+
+                    <h3>
+                      {mod.title}
+                    </h3>
+
+                    <p>
+                      {mod.description
+                        ? mod.description.length > 100
+                          ? mod.description.slice(
+                              0,
+                              100
+                            ) + "..."
+                          : mod.description
+                        : "Tidak ada deskripsi."}
+                    </p>
+
+                    <div className="meta">
+
+                      <span>
+                        by{" "}
+                        {creator?.username ||
+                          "Unknown Creator"}
+                      </span>
+
+                      <span
+                        className={
+                          mod.mod_type ===
+                          "paid"
+                            ? "price"
+                            : ""
+                        }
+                      >
+                        {mod.mod_type ===
+                        "paid"
+                          ? `Rp ${Number(
+                              mod.price
+                            ).toLocaleString(
+                              "id-ID"
+                            )}`
+                          : "FREE"}
+                      </span>
+
+                    </div>
+
+                    <div className="meta">
+                      <span>
+                        ↓ {mod.downloads || 0}
+                      </span>
+
+                      <span>
+                        View Mod →
+                      </span>
+                    </div>
+
+                  </div>
+
+                </a>
+              );
+            })}
 
           </div>
-
         )}
 
       </div>
     </section>
   );
-}
-
-function formatNumber(value: number) {
-  if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(1)}M`;
-  }
-
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(1)}K`;
-  }
-
-  return value.toString();
-      }
+            }
