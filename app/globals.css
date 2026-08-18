@@ -12,6 +12,878 @@
 @media(max-width:800px){.heroGrid,.detail,.footerGrid{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.adminCards{grid-template-columns:1fr 1fr}.links{gap:10px;font-size:12px}}
 @media(max-width:520px){.grid{grid-template-columns:1fr}.hero{padding-top:55px}.hero h1{letter-spacing:-2px;font-size:42px}.links a:nth-child(1),.links a:nth-child(2){display:none}}
 
+/* =====================================================
+   KYZOMODS PREMIUM LOGIN
+===================================================== */
+
+.loginPage {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(255, 114, 0, 0.08),
+      transparent 32%
+    ),
+    #05080d;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================
+   BACKGROUND
+========================= */
+
+.loginBackground {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.loginGrid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+
+  background-image:
+    linear-gradient(
+      rgba(255,255,255,0.025) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,0.025) 1px,
+      transparent 1px
+    );
+
+  background-size: 55px 55px;
+
+  mask-image:
+    radial-gradient(
+      ellipse at center,
+      black 10%,
+      transparent 75%
+    );
+}
+
+.loginGlow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.25;
+  animation: loginFloat 8s ease-in-out infinite;
+}
+
+.loginGlowOne {
+  width: 420px;
+  height: 420px;
+  background: #ff7200;
+  top: -180px;
+  left: -140px;
+}
+
+.loginGlowTwo {
+  width: 360px;
+  height: 360px;
+  background: #ff4500;
+  right: -130px;
+  bottom: -120px;
+  animation-delay: -3s;
+}
+
+.loginGlowThree {
+  width: 230px;
+  height: 230px;
+  background: #ff9d00;
+  left: 45%;
+  top: 45%;
+  opacity: 0.08;
+  animation-delay: -5s;
+}
+
+@keyframes loginFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(
+      0,
+      -25px,
+      0
+    );
+  }
+}
+
+/* =========================
+   PARTICLES
+========================= */
+
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ff7200;
+  box-shadow:
+    0 0 12px #ff7200;
+
+  animation:
+    particleFloat
+    6s
+    ease-in-out
+    infinite;
+}
+
+.p1 {
+  left: 18%;
+  top: 28%;
+}
+
+.p2 {
+  left: 80%;
+  top: 20%;
+  animation-delay: -2s;
+}
+
+.p3 {
+  left: 13%;
+  top: 75%;
+  animation-delay: -4s;
+}
+
+.p4 {
+  left: 88%;
+  top: 70%;
+  animation-delay: -1s;
+}
+
+.p5 {
+  left: 55%;
+  top: 15%;
+  animation-delay: -3s;
+}
+
+@keyframes particleFloat {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-25px);
+  }
+}
+
+/* =========================
+   TOP
+========================= */
+
+.loginTop {
+  position: relative;
+  z-index: 5;
+
+  width: min(
+    1180px,
+    calc(100% - 40px)
+  );
+
+  margin: 0 auto;
+  padding: 24px 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.loginBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  color: white;
+  text-decoration: none;
+
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.loginBrand img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.loginBrand b {
+  color: #ff7200;
+}
+
+.backHome {
+  color: #737e8d;
+  text-decoration: none;
+  font-size: 13px;
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.backHome:hover {
+  color: white;
+  transform: translateX(-3px);
+}
+
+/* =========================
+   CENTER
+========================= */
+
+.loginCenter {
+  position: relative;
+  z-index: 2;
+
+  flex: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 35px 20px 50px;
+}
+
+/* =========================
+   CARD
+========================= */
+
+.loginCard {
+  position: relative;
+
+  width: min(
+    430px,
+    100%
+  );
+
+  padding: 42px;
+
+  border-radius: 28px;
+
+  border: 1px solid
+    rgba(255,255,255,0.08);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(18,24,33,0.94),
+      rgba(7,11,16,0.96)
+    );
+
+  box-shadow:
+    0 30px 90px
+      rgba(0,0,0,0.55),
+    inset 0 1px 0
+      rgba(255,255,255,0.04);
+
+  backdrop-filter:
+    blur(22px);
+
+  animation:
+    loginCardIn
+    0.7s
+    cubic-bezier(
+      .16,
+      1,
+      .3,
+      1
+    );
+}
+
+.loginCard::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  border-radius: inherit;
+
+  padding: 1px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,114,0,0.4),
+      transparent 35%,
+      transparent 65%,
+      rgba(255,255,255,0.06)
+    );
+
+  mask:
+    linear-gradient(#000 0 0)
+      content-box,
+    linear-gradient(#000 0 0);
+
+  mask-composite: exclude;
+
+  pointer-events: none;
+}
+
+.loginCardGlow {
+  position: absolute;
+
+  width: 180px;
+  height: 180px;
+
+  top: -100px;
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  background: #ff7200;
+
+  filter: blur(100px);
+
+  opacity: 0.08;
+
+  pointer-events: none;
+}
+
+@keyframes loginCardIn {
+  from {
+    opacity: 0;
+    transform:
+      translateY(25px)
+      scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+/* =========================
+   LOGO
+========================= */
+
+.loginLogoWrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.loginLogoRing {
+  position: relative;
+
+  width: 82px;
+  height: 82px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 24px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,114,0,0.18),
+      rgba(255,114,0,0.03)
+    );
+
+  border: 1px solid
+    rgba(255,114,0,0.28);
+
+  box-shadow:
+    0 0 35px
+      rgba(255,114,0,0.12);
+
+  animation:
+    logoPulse
+    3s
+    ease-in-out
+    infinite;
+}
+
+.loginLogoRing::after {
+  content: "";
+
+  position: absolute;
+  inset: -7px;
+
+  border-radius: 29px;
+
+  border: 1px solid
+    rgba(255,114,0,0.1);
+
+  animation:
+    logoRing
+    4s
+    linear
+    infinite;
+}
+
+.loginLogo {
+  width: 55px;
+  height: 55px;
+  object-fit: contain;
+}
+
+@keyframes logoPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes logoRing {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================
+   HEADING
+========================= */
+
+.loginHeading {
+  text-align: center;
+}
+
+.loginEyebrow {
+  color: #ff7200;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 2.5px;
+}
+
+.loginHeading h1 {
+  margin: 10px 0 8px;
+
+  font-size: 38px;
+  line-height: 1.1;
+
+  letter-spacing: -1.5px;
+}
+
+.loginHeading h1 span {
+  color: #ff7200;
+}
+
+.loginHeading p {
+  margin: 0 auto;
+
+  max-width: 340px;
+
+  color: #7e8998;
+
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* =========================
+   ERROR
+========================= */
+
+.loginError {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 22px;
+  padding: 12px 14px;
+
+  border: 1px solid
+    rgba(248,113,113,0.2);
+
+  border-radius: 12px;
+
+  background:
+    rgba(239,68,68,0.08);
+
+  color: #fca5a5;
+
+  font-size: 12px;
+}
+
+.errorIcon {
+  width: 22px;
+  height: 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: #ef4444;
+  color: white;
+
+  font-weight: 900;
+}
+
+/* =========================
+   DISCORD BUTTON
+========================= */
+
+.discordLoginButton {
+  width: 100%;
+
+  margin-top: 25px;
+
+  min-height: 64px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 8px 10px;
+
+  border: 1px solid
+    rgba(255,255,255,0.1);
+
+  border-radius: 15px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #5865f2,
+      #4752c4
+    );
+
+  color: white;
+
+  cursor: pointer;
+
+  text-align: left;
+
+  box-shadow:
+    0 12px 30px
+      rgba(88,101,242,0.18);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.discordLoginButton:hover:not(:disabled) {
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 18px 40px
+      rgba(88,101,242,0.3);
+
+  filter: brightness(1.08);
+}
+
+.discordLoginButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.discordLoginButton:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.discordButtonIcon {
+  width: 46px;
+  height: 46px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  background:
+    rgba(255,255,255,0.14);
+}
+
+.discordButtonIcon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.discordButtonText {
+  display: flex;
+  flex-direction: column;
+
+  margin-left: 13px;
+  gap: 2px;
+
+  flex: 1;
+}
+
+.discordButtonText strong {
+  font-size: 14px;
+}
+
+.discordButtonText small {
+  color:
+    rgba(255,255,255,0.6);
+
+  font-size: 10px;
+}
+
+.buttonArrow {
+  margin-right: 8px;
+
+  font-size: 20px;
+
+  opacity: 0.7;
+
+  transition:
+    transform 0.2s ease;
+}
+
+.discordLoginButton:hover
+.buttonArrow {
+  transform: translateX(4px);
+}
+
+/* =========================
+   SPINNER
+========================= */
+
+.loginSpinner {
+  width: 19px;
+  height: 19px;
+
+  border-radius: 50%;
+
+  border:
+    2px solid
+    rgba(255,255,255,0.3);
+
+  border-top-color: white;
+
+  animation:
+    loginSpin
+    0.7s
+    linear
+    infinite;
+}
+
+@keyframes loginSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================
+   DIVIDER
+========================= */
+
+.loginDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin: 25px 0 20px;
+}
+
+.loginDivider span {
+  flex: 1;
+  height: 1px;
+
+  background:
+    rgba(255,255,255,0.06);
+}
+
+.loginDivider small {
+  color: #4f5967;
+
+  font-size: 8px;
+  font-weight: 800;
+
+  letter-spacing: 1.5px;
+}
+
+/* =========================
+   BENEFITS
+========================= */
+
+.loginBenefits {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.loginBenefit {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  padding: 11px;
+
+  border-radius: 12px;
+
+  border: 1px solid
+    rgba(255,255,255,0.05);
+
+  background:
+    rgba(255,255,255,0.025);
+}
+
+.benefitIcon {
+  width: 28px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 8px;
+
+  background:
+    rgba(255,114,0,0.1);
+
+  color: #ff7200;
+
+  font-size: 12px;
+}
+
+.loginBenefit div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.loginBenefit strong {
+  font-size: 10px;
+}
+
+.loginBenefit small {
+  color: #606b79;
+  font-size: 8px;
+}
+
+/* =========================
+   TERMS
+========================= */
+
+.loginTerms {
+  margin: 20px 0 0;
+
+  color: #4f5967;
+
+  text-align: center;
+
+  font-size: 9px;
+  line-height: 1.7;
+}
+
+.loginTerms a {
+  margin: 0 3px;
+
+  color: #7d8795;
+
+  text-decoration: none;
+}
+
+.loginTerms a:hover {
+  color: #ff7200;
+}
+
+/* =========================
+   FOOTER
+========================= */
+
+.loginFooter {
+  position: relative;
+  z-index: 3;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+
+  padding: 20px;
+
+  color: #414b58;
+
+  font-size: 9px;
+
+  text-align: center;
+}
+
+.footerDot {
+  color: #ff7200;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 600px) {
+
+  .loginTop {
+    width: calc(100% - 30px);
+    padding: 18px 0;
+  }
+
+  .loginBrand {
+    font-size: 15px;
+  }
+
+  .loginBrand img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .backHome {
+    font-size: 11px;
+  }
+
+  .loginCenter {
+    padding:
+      20px 15px
+      35px;
+  }
+
+  .loginCard {
+    padding: 30px 22px;
+    border-radius: 23px;
+  }
+
+  .loginHeading h1 {
+    font-size: 32px;
+  }
+
+  .loginBenefits {
+    grid-template-columns: 1fr;
+  }
+
+  .loginFooter {
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .footerDot {
+    display: none;
+  }
+
+  }
+
 .reportTop {
   display: flex;
   align-items: center;
