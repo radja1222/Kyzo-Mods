@@ -12,6 +12,240 @@
 @media(max-width:800px){.heroGrid,.detail,.footerGrid{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.adminCards{grid-template-columns:1fr 1fr}.links{gap:10px;font-size:12px}}
 @media(max-width:520px){.grid{grid-template-columns:1fr}.hero{padding-top:55px}.hero h1{letter-spacing:-2px;font-size:42px}.links a:nth-child(1),.links a:nth-child(2){display:none}}
 
+/* =========================
+   MODERATION
+========================= */
+
+.moderationFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 25px;
+  padding: 7px;
+  width: fit-content;
+  border: 1px solid #202733;
+  border-radius: 14px;
+  background: #0b1017;
+}
+
+.moderationFilters a {
+  padding: 10px 15px;
+  border-radius: 9px;
+  color: #8b95a5;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.moderationFilters a:hover {
+  color: white;
+  background: #151c25;
+}
+
+.moderationFilters a.filterActive {
+  color: white;
+  background: #ff7200;
+}
+
+.moderationList {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.moderationCard {
+  display: flex;
+  gap: 20px;
+  padding: 18px;
+  border: 1px solid #202733;
+  border-radius: 20px;
+  background: #0b1017;
+  transition: 0.2s ease;
+}
+
+.moderationCard:hover {
+  border-color: #343e4c;
+  transform: translateY(-2px);
+}
+
+.moderationThumb {
+  width: 210px;
+  height: 140px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #151c25;
+}
+
+.moderationThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.moderationNoThumb {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff7200;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.moderationContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.moderationTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.moderationTop h2 {
+  margin: 7px 0 0;
+  font-size: 21px;
+}
+
+.moderationContent > p {
+  margin: 12px 0;
+  color: #8b95a5;
+  line-height: 1.6;
+}
+
+.moderationMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.moderationMeta span {
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: #121923;
+  color: #a4adba;
+  font-size: 12px;
+}
+
+.moderationActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 17px;
+}
+
+.moderationActions form {
+  margin: 0;
+}
+
+.approveBtn {
+  background: #15803d !important;
+  border-color: #15803d !important;
+  color: white !important;
+}
+
+.approveBtn:hover {
+  background: #16a34a !important;
+}
+
+.rejectBtn {
+  background: #991b1b !important;
+  border-color: #991b1b !important;
+  color: white !important;
+}
+
+.rejectBtn:hover {
+  background: #dc2626 !important;
+}
+
+.status-approved {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+}
+
+.status-pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+}
+
+.status-rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.status-hidden {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+}
+
+.moderationDate {
+  display: block;
+  margin-top: 12px;
+  color: #626c7a;
+}
+
+.moderationEmpty {
+  padding: 80px 20px;
+  text-align: center;
+  border: 1px solid #202733;
+  border-radius: 20px;
+  background: #0b1017;
+}
+
+.emptyIcon {
+  width: 55px;
+  height: 55px;
+  margin: 0 auto 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  font-size: 25px;
+  font-weight: 900;
+}
+
+@media (max-width: 700px) {
+
+  .moderationFilters {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .moderationFilters a {
+    white-space: nowrap;
+  }
+
+  .moderationCard {
+    flex-direction: column;
+  }
+
+  .moderationThumb {
+    width: 100%;
+    height: 190px;
+  }
+
+  .moderationTop {
+    flex-direction: column;
+  }
+
+  .moderationActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .moderationActions .btn,
+  .moderationActions form,
+  .moderationActions form .btn {
+    width: 100%;
+  }
+  }
 .adminNav {
   color: #ff7200 !important;
   font-weight: 800;
