@@ -2,9 +2,12 @@ import { supabaseServer } from "@/lib/supabase-server";
 
 export async function Header() {
   const supabase = await supabaseServer();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const isOwner = user?.user_metadata?.role === "owner";
 
   return (
     <header>
@@ -31,6 +34,11 @@ export async function Header() {
             <>
               <a href="/upload">Upload</a>
               <a href="/dashboard">Dashboard</a>
+
+              {isOwner && (
+                <a href="/admin">Owner</a>
+              )}
+
               <a className="pill" href="/auth/signout">
                 Logout
               </a>
@@ -45,4 +53,4 @@ export async function Header() {
       </div>
     </header>
   );
-}
+          }
