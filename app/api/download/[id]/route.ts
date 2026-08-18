@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id } = await context.params;
 
-    // Pastikan ID valid
+    // Validasi ID
     if (!id || !/^\d+$/.test(id)) {
       return NextResponse.json(
         {
@@ -25,7 +25,7 @@ export async function GET(
     const supabase = await supabaseServer();
 
     // Ambil data mod
-    const { data: mod, error: modError } = await supabase
+    const { data: mod, error } = await supabase
       .from("mods")
       .select(
         `
@@ -40,9 +40,21 @@ export async function GET(
       .eq("status", "approved")
       .single();
 
-    if (modError || !mod) {
-      console.error("MOD ERROR:", modError);
+    if (error) {
+      console.error("SUPABASE MOD ERROR:", error);
 
+      return NextResponse.json(
+        {
+          error: "Gagal mengambil data mod.",
+          detail: error.message,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    if (!mod) {
       return NextResponse.json(
         {
           error: "Mod tidak ditemukan atau belum approved.",
@@ -53,11 +65,11 @@ export async function GET(
       );
     }
 
-    // Download hanya untuk mod FREE
+    // Pastikan hanya FREE yang bisa langsung didownload
     if (mod.mod_type !== "free") {
       return NextResponse.json(
         {
-          error: "Mod ini merupakan mod berbayar.",
+          error: "Mod ini adalah mod berbayar.",
         },
         {
           status: 403,
@@ -65,10 +77,11 @@ export async function GET(
       );
     }
 
+    // Pastikan file_path tersedia
     if (!mod.file_path) {
       return NextResponse.json(
         {
-          error: "File mod tidak ditemukan.",
+          error: "Path file mod kosong.",
         },
         {
           status: 404,
@@ -76,22 +89,24 @@ export async function GET(
       );
     }
 
+    console.log("DOWNLOAD MOD:", {
+      id: mod.id,
+      title: mod.title,
+      file_path: mod.file_path,
+    });
+
     /*
-     * Bucket "mods" dibuat PRIVATE.
-     * Karena itu kita menggunakan signed URL.
+     * Bucket mods sekarang PUBLIC.
+     * Ambil URL file secara langsung.
      */
-    const { data: signed, error: signedError } =
-      await supabase.storage
-        .from("mods")
-        .createSignedUrl(mod.file_path, 60);
+    const { data } = supabase.storage
+      .from("mods")
+      .getPublicUrl(mod.file_path);
 
-    if (signedError || !signed?.signedUrl) {
-      console.error("SIGNED URL ERROR:", signedError);
-
+    if (!data?.publicUrl) {
       return NextResponse.json(
         {
-          error:
-            "Gagal membuat link download. Pastikan file masih ada di Storage.",
+          error: "URL file tidak dapat dibuat.",
         },
         {
           status: 500,
@@ -99,20 +114,21 @@ export async function GET(
       );
     }
 
-    /*
-     * Redirect langsung ke file Storage.
-     */
-    return NextResponse.redirect(signed.signedUrl);
-  } catch (error) {
-    console.error("DOWNLOAD API ERROR:", error);
+    console.log("PUBLIC DOWNLOAD URL:", data.publicUrl);
+
+    // Redirect ke file
+    return NextResponse.redirect(data.publicUrl);
+  } catch (error: any) {
+    console.error("DOWNLOAD ERROR:", error);
 
     return NextResponse.json(
       {
         error: "Terjadi kesalahan pada server.",
+        detail: error?.message || "Unknown error",
       },
       {
         status: 500,
       }
     );
   }
-}
+          }
