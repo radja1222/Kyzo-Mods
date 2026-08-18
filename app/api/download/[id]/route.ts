@@ -1,1 +1,118 @@
-import {NextResponse} from "next/server";import {supabaseServer} from "@/lib/supabase-server";import {supabaseAdmin} from "@/lib/supabase-admin";export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){const {id}=await params;const s=await supabaseServer();const {data:m}=await s.from("mods").select("*").eq("id",id).eq("status","approved").single();if(!m)return new NextResponse("Not found",{status:404});if(m.mod_type==="paid"){const {data:{user}}=await s.auth.getUser();if(!user)return NextResponse.redirect(new URL("/login",req.url));const {data:o}=await s.from("orders").select("status").eq("user_id",user.id).eq("mod_id",m.id).eq("status","paid").maybeSingle();if(!o)return new NextResponse("Purchase required",{status:402})}const admin=supabaseAdmin(); const {data:signed}=await admin.storage.from("mods").createSignedUrl(m.file_path,120);if(!signed?.signedUrl)return new NextResponse("File unavailable",{status:404});await admin.from("mods").update({downloads:(m.downloads||0)+1}).eq("id",m.id);return NextResponse.redirect(signed.signedUrl)}
+import { NextResponse } from "next/server";
+import { supabaseServer } from "@/lib/supabase-server";
+
+export async function GET(
+  request: Request,
+  context: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  try {
+    const { id } = await context.params;
+
+    // Pastikan ID valid
+    if (!id || !/^\d+$/.test(id)) {
+      return NextResponse.json(
+        {
+          error: "ID mod tidak valid.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const supabase = await supabaseServer();
+
+    // Ambil data mod
+    const { data: mod, error: modError } = await supabase
+      .from("mods")
+      .select(
+        `
+        id,
+        title,
+        file_path,
+        mod_type,
+        status
+        `
+      )
+      .eq("id", Number(id))
+      .eq("status", "approved")
+      .single();
+
+    if (modError || !mod) {
+      console.error("MOD ERROR:", modError);
+
+      return NextResponse.json(
+        {
+          error: "Mod tidak ditemukan atau belum approved.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    // Download hanya untuk mod FREE
+    if (mod.mod_type !== "free") {
+      return NextResponse.json(
+        {
+          error: "Mod ini merupakan mod berbayar.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    if (!mod.file_path) {
+      return NextResponse.json(
+        {
+          error: "File mod tidak ditemukan.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    /*
+     * Bucket "mods" dibuat PRIVATE.
+     * Karena itu kita menggunakan signed URL.
+     */
+    const { data: signed, error: signedError } =
+      await supabase.storage
+        .from("mods")
+        .createSignedUrl(mod.file_path, 60);
+
+    if (signedError || !signed?.signedUrl) {
+      console.error("SIGNED URL ERROR:", signedError);
+
+      return NextResponse.json(
+        {
+          error:
+            "Gagal membuat link download. Pastikan file masih ada di Storage.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    /*
+     * Redirect langsung ke file Storage.
+     */
+    return NextResponse.redirect(signed.signedUrl);
+  } catch (error) {
+    console.error("DOWNLOAD API ERROR:", error);
+
+    return NextResponse.json(
+      {
+        error: "Terjadi kesalahan pada server.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
