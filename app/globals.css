@@ -12,6 +12,211 @@
 @media(max-width:800px){.heroGrid,.detail,.footerGrid{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.adminCards{grid-template-columns:1fr 1fr}.links{gap:10px;font-size:12px}}
 @media(max-width:520px){.grid{grid-template-columns:1fr}.hero{padding-top:55px}.hero h1{letter-spacing:-2px;font-size:42px}.links a:nth-child(1),.links a:nth-child(2){display:none}}
 
+/* =========================
+   KYZO MODS - RATINGS
+========================= */
+
+.ratingSummary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 18px 0 24px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  background: rgba(255,255,255,.025);
+}
+
+.ratingBig {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ratingSummaryStars,
+.reviewStars {
+  display: flex;
+  gap: 3px;
+}
+
+.star {
+  color: rgba(255,255,255,.2);
+  font-size: 19px;
+}
+
+.star.filled {
+  color: #ffb800;
+}
+
+.ratingSection {
+  margin-top: 38px;
+  padding: 22px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.025);
+}
+
+.ratingSection h2,
+.reviewsSection h2,
+.commentsSection h2 {
+  margin-top: 0;
+}
+
+.ratingForm {
+  margin-top: 18px;
+}
+
+.ratingStars {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.ratingStar {
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,.2);
+  font-size: 34px;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    transform .15s ease,
+    color .15s ease;
+}
+
+.ratingStar:hover {
+  transform: scale(1.12);
+  color: #ffb800;
+}
+
+.ratingStar.active {
+  color: #ffb800;
+}
+
+.ratingLabel {
+  font-size: 13px;
+  color: rgba(255,255,255,.55);
+  margin-bottom: 14px;
+}
+
+.ratingForm textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(0,0,0,.25);
+  color: inherit;
+  outline: none;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.ratingForm textarea:focus {
+  border-color: rgba(255,184,0,.6);
+}
+
+.ratingSuccess {
+  margin-bottom: 12px;
+  padding: 10px 13px;
+  border-radius: 10px;
+  background: rgba(34,197,94,.1);
+  border: 1px solid rgba(34,197,94,.25);
+  color: #7ee2a2;
+}
+
+.reviewsSection {
+  margin-top: 38px;
+}
+
+.reviewsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reviewCard {
+  padding: 17px;
+  border-radius: 15px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.025);
+}
+
+.reviewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.reviewUser {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reviewUser img,
+.reviewAvatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.reviewAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,184,0,.15);
+  color: #ffb800;
+  font-weight: 800;
+}
+
+.reviewUser strong {
+  display: block;
+}
+
+.reviewUser small {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255,255,255,.4);
+  font-size: 11px;
+}
+
+.reviewText {
+  margin: 14px 0 0;
+  line-height: 1.65;
+  color: rgba(255,255,255,.75);
+}
+
+.commentsSection {
+  margin-top: 40px;
+  padding-top: 25px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+@media (max-width: 600px) {
+
+  .ratingSummary {
+    padding: 14px;
+  }
+
+  .ratingBig {
+    font-size: 29px;
+  }
+
+  .ratingStar {
+    font-size: 30px;
+  }
+
+  .reviewHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+   }
 /* =====================================================
    KYZOMODS PREMIUM LOGIN
 ===================================================== */
