@@ -18,10 +18,6 @@ export async function POST(
       );
     }
 
-    /* =========================
-       CHECK ADMIN
-    ========================= */
-
     const { data: profile } =
       await supabase
         .from("profiles")
@@ -37,18 +33,11 @@ export async function POST(
     ) {
       return NextResponse.json(
         {
-          error:
-            "Akses ditolak.",
+          error: "Akses ditolak.",
         },
-        {
-          status: 403,
-        }
+        { status: 403 }
       );
     }
-
-    /* =========================
-       FORM DATA
-    ========================= */
 
     const form =
       await request.formData();
@@ -61,26 +50,127 @@ export async function POST(
       form.get("action") || ""
     );
 
-    if (!id || !action) {
+    if (!id) {
       return NextResponse.json(
         {
           error:
-            "Data tidak lengkap.",
+            "ID mod tidak valid.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    /* =========================
-       ACTION
-    ========================= */
+    /*
+     * DELETE
+     */
+
+    if (action === "delete") {
+
+      const { data: mod } =
+        await supabase
+          .from("mods")
+          .select(
+            "id,file_path,thumbnail_url"
+          )
+          .eq("id", id)
+          .single();
+
+      if (!mod) {
+        return NextResponse.json(
+          {
+            error:
+              "Mod tidak ditemukan.",
+          },
+          { status: 404 }
+        );
+      }
+
+      /*
+       * Hapus file mod dari Storage
+       */
+
+      if (mod.file_path) {
+        await supabase.storage
+          .from("mods")
+          .remove([
+            mod.file_path,
+          ]);
+      }
+
+      /*
+       * Hapus thumbnail
+       */
+
+      if (mod.thumbnail_url) {
+
+        try {
+          const url =
+            new URL(
+              mod.thumbnail_url
+            );
+
+          const marker =
+            "/storage/v1/object/public/thumbnails/";
+
+          const index =
+            url.pathname.indexOf(
+              marker
+            );
+
+          if (index !== -1) {
+            const thumbPath =
+              decodeURIComponent(
+                url.pathname.slice(
+                  index +
+                    marker.length
+                )
+              );
+
+            await supabase.storage
+              .from("thumbnails")
+              .remove([
+                thumbPath,
+              ]);
+          }
+        } catch {
+          // thumbnail tidak wajib dihapus
+        }
+      }
+
+      /*
+       * Hapus database record
+       */
+
+      const { error } =
+        await supabase
+          .from("mods")
+          .delete()
+          .eq("id", id);
+
+      if (error) {
+        return NextResponse.json(
+          {
+            error: error.message,
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.redirect(
+        new URL(
+          "/admin/mods?status=approved",
+          request.url
+        )
+      );
+    }
+
+    /*
+     * STATUS ACTION
+     */
 
     let newStatus = "";
 
     switch (action) {
-
       case "approve":
         newStatus = "approved";
         break;
@@ -99,44 +189,28 @@ export async function POST(
             error:
               "Action tidak valid.",
           },
-          {
-            status: 400,
-          }
+          { status: 400 }
         );
     }
-
-    /* =========================
-       UPDATE MOD
-    ========================= */
 
     const { error } =
       await supabase
         .from("mods")
         .update({
           status: newStatus,
-          updated_at: new Date().toISOString(),
+          updated_at:
+            new Date().toISOString(),
         })
         .eq("id", id);
 
     if (error) {
-      console.error(
-        "ADMIN MOD ERROR:",
-        error
-      );
-
       return NextResponse.json(
         {
           error: error.message,
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
-
-    /* =========================
-       REDIRECT
-    ========================= */
 
     return NextResponse.redirect(
       new URL(
@@ -144,11 +218,9 @@ export async function POST(
         request.url
       )
     );
-
   } catch (error: any) {
-
     console.error(
-      "ADMIN API ERROR:",
+      "ADMIN MOD ERROR:",
       error
     );
 
@@ -158,9 +230,7 @@ export async function POST(
           error?.message ||
           "Internal server error.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
-}
+        }
