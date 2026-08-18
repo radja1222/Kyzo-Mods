@@ -12,6 +12,17 @@
 @media(max-width:800px){.heroGrid,.detail,.footerGrid{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.adminCards{grid-template-columns:1fr 1fr}.links{gap:10px;font-size:12px}}
 @media(max-width:520px){.grid{grid-template-columns:1fr}.hero{padding-top:55px}.hero h1{letter-spacing:-2px;font-size:42px}.links a:nth-child(1),.links a:nth-child(2){display:none}}
 
+.adminNav {
+  color: #ff7200 !important;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.adminNav:hover {
+  color: #ff9a3d !important;
+}
 .modTotal {
   padding: 8px 12px;
   border-radius: 10px;
