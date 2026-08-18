@@ -163,7 +163,31 @@ export default async function AdminModsPage({
           >
             👁 Hidden
           </a>
+        <a
+        <form
+  action="/api/admin/mods"
+  method="POST"
+>
+  <input
+    type="hidden"
+    name="id"
+    value={mod.id}
+  />
 
+  <input
+    type="hidden"
+    name="action"
+    value="delete"
+  />
+
+  <button
+    className="btn rejectBtn"
+    type="submit"
+  >
+    🗑 Delete
+  </button>
+</form>
+      </a>
         </div>
 
         {/* MOD LIST */}
