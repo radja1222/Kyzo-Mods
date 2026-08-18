@@ -5,14 +5,24 @@ type SearchParams = {
   status?: string;
 };
 
+const allowedStatuses = [
+  "pending",
+  "approved",
+  "rejected",
+  "hidden",
+];
+
 export default async function AdminModsPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-
   const supabase = await supabaseServer();
+
+  // =========================
+  // CHECK LOGIN
+  // =========================
 
   const {
     data: { user },
@@ -22,31 +32,31 @@ export default async function AdminModsPage({
     redirect("/login");
   }
 
+  // =========================
+  // CHECK ADMIN / OWNER
+  // =========================
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, username")
     .eq("id", user.id)
     .single();
 
-  if (
-    !profile ||
-    !["admin", "owner"].includes(profile.role)
-  ) {
+  if (!profile || !["admin", "owner"].includes(profile.role)) {
     redirect("/dashboard");
   }
 
-  const allowedStatuses = [
-    "pending",
-    "approved",
-    "rejected",
-    "hidden",
-  ];
+  // =========================
+  // STATUS FILTER
+  // =========================
 
-  const status = allowedStatuses.includes(
-    params.status || ""
-  )
+  const status = allowedStatuses.includes(params.status || "")
     ? params.status!
     : "pending";
+
+  // =========================
+  // GET MODS
+  // =========================
 
   const { data: mods, error } = await supabase
     .from("mods")
@@ -64,7 +74,7 @@ export default async function AdminModsPage({
       status,
       created_at,
       updated_at,
-      profiles(
+      profiles!mods_user_id_fkey(
         id,
         username,
         avatar_url
@@ -81,25 +91,24 @@ export default async function AdminModsPage({
     });
 
   if (error) {
-    console.error(error);
+    console.error("ADMIN MOD ERROR:", error);
   }
 
   return (
     <main className="adminPage">
       <div className="container">
 
-        {/* HEADER */}
+        {/* =========================
+            HEADER
+        ========================= */}
 
         <div className="adminHeader">
-
           <div>
             <div className="adminEyebrow">
               KYZO MODS
             </div>
 
-            <h1>
-              Mod Moderation
-            </h1>
+            <h1>Mod Moderation</h1>
 
             <p className="muted">
               Review, approve dan kelola mod
@@ -113,10 +122,11 @@ export default async function AdminModsPage({
           >
             ← Dashboard
           </a>
-
         </div>
 
-        {/* FILTER */}
+        {/* =========================
+            FILTER
+        ========================= */}
 
         <div className="moderationFilters">
 
@@ -163,251 +173,132 @@ export default async function AdminModsPage({
           >
             👁 Hidden
           </a>
-        <a
-        <form
-  action="/api/admin/mods"
-  method="POST"
->
-  <input
-    type="hidden"
-    name="id"
-    value={mod.id}
-  />
 
-  <input
-    type="hidden"
-    name="action"
-    value="delete"
-  />
-
-  <button
-    className="btn rejectBtn"
-    type="submit"
-  >
-    🗑 Delete
-  </button>
-</form>
-      </a>
         </div>
 
-        {/* MOD LIST */}
+        {/* =========================
+            MOD LIST
+        ========================= */}
 
         <div className="moderationList">
 
-          {(mods || []).map(
-            (mod: any) => (
-              <article
-                className="moderationCard"
-                key={mod.id}
-              >
+          {(mods || []).map((mod: any) => (
+            <article
+              className="moderationCard"
+              key={mod.id}
+            >
 
-                {/* THUMBNAIL */}
+              {/* THUMBNAIL */}
 
-                <div className="moderationThumb">
+              <div className="moderationThumb">
 
-                  {mod.thumbnail_url ? (
-                    <img
-                      src={mod.thumbnail_url}
-                      alt={mod.title}
-                    />
-                  ) : (
-                    <div className="moderationNoThumb">
-                      KYZO
-                    </div>
-                  )}
+                {mod.thumbnail_url ? (
+                  <img
+                    src={mod.thumbnail_url}
+                    alt={mod.title}
+                  />
+                ) : (
+                  <div className="moderationNoThumb">
+                    KYZO
+                  </div>
+                )}
+
+              </div>
+
+              {/* CONTENT */}
+
+              <div className="moderationContent">
+
+                <div className="moderationTop">
+
+                  <div>
+
+                    <span className="tag">
+                      {mod.categories?.game?.toUpperCase()}
+                      {" · "}
+                      {mod.categories?.name}
+                    </span>
+
+                    <h2>
+                      {mod.title}
+                    </h2>
+
+                  </div>
+
+                  <span
+                    className={`status status-${mod.status}`}
+                  >
+                    {mod.status.toUpperCase()}
+                  </span>
 
                 </div>
 
-                {/* CONTENT */}
+                {/* DESCRIPTION */}
 
-                <div className="moderationContent">
+                <p>
+                  {mod.description?.slice(0, 220)}
+                  {mod.description?.length > 220
+                    ? "..."
+                    : ""}
+                </p>
 
-                  <div className="moderationTop">
+                {/* META */}
 
-                    <div>
+                <div className="moderationMeta">
 
-                      <span className="tag">
-                        {mod.categories?.game?.toUpperCase()}
-                        {" · "}
-                        {mod.categories?.name}
-                      </span>
+                  <span>
+                    👤{" "}
+                    {mod.profiles?.username ||
+                      "Unknown"}
+                  </span>
 
-                      <h2>
-                        {mod.title}
-                      </h2>
+                  <span>
+                    📦 v{mod.version}
+                  </span>
 
-                    </div>
+                  <span>
+                    {mod.mod_type === "paid"
+                      ? `💰 Rp ${Number(
+                          mod.price
+                        ).toLocaleString(
+                          "id-ID"
+                        )}`
+                      : "🆓 FREE"}
+                  </span>
 
-                    <span
-                      className={`status status-${mod.status}`}
-                    >
-                      {mod.status.toUpperCase()}
-                    </span>
+                  <span>
+                    ↓ {mod.downloads}
+                  </span>
 
-                  </div>
+                  <span>
+                    👁 {mod.views}
+                  </span>
 
-                  <p>
-                    {mod.description?.slice(
-                      0,
-                      220
-                    )}
-                    {mod.description?.length >
-                    220
-                      ? "..."
-                      : ""}
-                  </p>
+                </div>
 
-                  {/* META */}
+                {/* =========================
+                    ACTIONS
+                ========================= */}
 
-                  <div className="moderationMeta">
+                <div className="moderationActions">
 
-                    <span>
-                      👤{" "}
-                      {mod.profiles?.username ||
-                        "Unknown"}
-                    </span>
+                  {/* PREVIEW */}
 
-                    <span>
-                      📦 v{mod.version}
-                    </span>
+                  <a
+                    href={`/mod/${mod.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn"
+                  >
+                    👁 Preview
+                  </a>
 
-                    <span>
-                      {mod.mod_type === "paid"
-                        ? `💰 Rp ${Number(
-                            mod.price
-                          ).toLocaleString(
-                            "id-ID"
-                          )}`
-                        : "🆓 FREE"}
-                    </span>
+                  {/* =====================
+                      PENDING
+                  ===================== */}
 
-                    <span>
-                      ↓ {mod.downloads}
-                    </span>
-
-                    <span>
-                      👁 {mod.views}
-                    </span>
-
-                  </div>
-
-                  {/* ACTION */}
-
-                  <div className="moderationActions">
-
-                    <a
-                      href={`/mod/${mod.slug}`}
-                      target="_blank"
-                      className="btn"
-                    >
-                      👁 Preview
-                    </a>
-
-                    {status === "pending" && (
-                      <>
-                        <form
-                          action="/api/admin/mods"
-                          method="POST"
-                        >
-                          <input
-                            type="hidden"
-                            name="id"
-                            value={mod.id}
-                          />
-
-                          <input
-                            type="hidden"
-                            name="action"
-                            value="approve"
-                          />
-
-                          <button
-                            className="btn approveBtn"
-                            type="submit"
-                          >
-                            ✓ Approve
-                          </button>
-                        </form>
-
-                        <form
-                          action="/api/admin/mods"
-                          method="POST"
-                        >
-                          <input
-                            type="hidden"
-                            name="id"
-                            value={mod.id}
-                          />
-
-                          <input
-                            type="hidden"
-                            name="action"
-                            value="reject"
-                          />
-
-                          <button
-                            className="btn rejectBtn"
-                            type="submit"
-                          >
-                            ✕ Reject
-                          </button>
-                        </form>
-                      </>
-                    )}
-
-                    {status === "approved" && (
-                      <form
-                        action="/api/admin/mods"
-                        method="POST"
-                      >
-                        <input
-                          type="hidden"
-                          name="id"
-                          value={mod.id}
-                        />
-
-                        <input
-                          type="hidden"
-                          name="action"
-                          value="hide"
-                        />
-
-                        <button
-                          className="btn"
-                          type="submit"
-                        >
-                          👁 Hide
-                        </button>
-                      </form>
-                    )}
-
-                    {status === "hidden" && (
-                      <form
-                        action="/api/admin/mods"
-                        method="POST"
-                      >
-                        <input
-                          type="hidden"
-                          name="id"
-                          value={mod.id}
-                        />
-
-                        <input
-                          type="hidden"
-                          name="action"
-                          value="approve"
-                        />
-
-                        <button
-                          className="btn approveBtn"
-                          type="submit"
-                        >
-                          ✓ Publish
-                        </button>
-                      </form>
-                    )}
-
-                    {status === "rejected" && (
+                  {status === "pending" && (
+                    <>
                       <form
                         action="/api/admin/mods"
                         method="POST"
@@ -431,27 +322,222 @@ export default async function AdminModsPage({
                           ✓ Approve
                         </button>
                       </form>
-                    )}
 
-                  </div>
+                      <form
+                        action="/api/admin/mods"
+                        method="POST"
+                      >
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={mod.id}
+                        />
 
-                  <small className="moderationDate">
-                    Dikirim{" "}
-                    {new Date(
-                      mod.created_at
-                    ).toLocaleString(
-                      "id-ID"
-                    )}
-                  </small>
+                        <input
+                          type="hidden"
+                          name="action"
+                          value="reject"
+                        />
+
+                        <button
+                          className="btn rejectBtn"
+                          type="submit"
+                        >
+                          ✕ Reject
+                        </button>
+                      </form>
+                    </>
+                  )}
+
+                  {/* =====================
+                      APPROVED
+                  ===================== */}
+
+                  {status === "approved" && (
+                    <>
+                      <form
+                        action="/api/admin/mods"
+                        method="POST"
+                      >
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={mod.id}
+                        />
+
+                        <input
+                          type="hidden"
+                          name="action"
+                          value="hide"
+                        />
+
+                        <button
+                          className="btn"
+                          type="submit"
+                        >
+                          👁 Hide
+                        </button>
+                      </form>
+
+                      <form
+                        action="/api/admin/mods"
+                        method="POST"
+                      >
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={mod.id}
+                        />
+
+                        <input
+                          type="hidden"
+                          name="action"
+                          value="delete"
+                        />
+
+                        <button
+                          className="btn rejectBtn"
+                          type="submit"
+                        >
+                          🗑 Delete
+                        </button>
+                      </form>
+                    </>
+                  )}
+
+                  {/* =====================
+                      HIDDEN
+                  ===================== */}
+
+                  {status === "hidden" && (
+                    <>
+                      <form
+                        action="/api/admin/mods"
+                        method="POST"
+                      >
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={mod.id}
+                        />
+
+                        <input
+                          type="hidden"
+                          name="action"
+                          value="approve"
+                        />
+
+                        <button
+                          className="btn approveBtn"
+                          type="submit"
+                        >
+                          ✓ Publish
+                        </button>
+                      </form>
+
+                      <form
+                        action="/api/admin/mods"
+                        method="POST"
+                      >
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={mod.id}
+                        />
+
+                        <input
+                          type="hidden"
+                          name="action"
+                          value="delete"
+                        />
+
+                        <button
+                          className="btn rejectBtn"
+                          type="submit"
+                        >
+                          🗑 Delete
+                        </button>
+                      </form>
+                    </>
+                  )}
+
+                  {/* =====================
+                      REJECTED
+                  ===================== */}
+
+                  {status === "rejected" && (
+                    <>
+                      <form
+                        action="/api/admin/mods"
+                        method="POST"
+                      >
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={mod.id}
+                        />
+
+                        <input
+                          type="hidden"
+                          name="action"
+                          value="approve"
+                        />
+
+                        <button
+                          className="btn approveBtn"
+                          type="submit"
+                        >
+                          ✓ Approve
+                        </button>
+                      </form>
+
+                      <form
+                        action="/api/admin/mods"
+                        method="POST"
+                      >
+                        <input
+                          type="hidden"
+                          name="id"
+                          value={mod.id}
+                        />
+
+                        <input
+                          type="hidden"
+                          name="action"
+                          value="delete"
+                        />
+
+                        <button
+                          className="btn rejectBtn"
+                          type="submit"
+                        >
+                          🗑 Delete
+                        </button>
+                      </form>
+                    </>
+                  )}
 
                 </div>
 
-              </article>
-            )
-          )}
+                {/* DATE */}
 
-          {(!mods ||
-            mods.length === 0) && (
+                <small className="moderationDate">
+                  Dikirim{" "}
+                  {new Date(
+                    mod.created_at
+                  ).toLocaleString("id-ID")}
+                </small>
+
+              </div>
+
+            </article>
+          ))}
+
+          {/* =========================
+              EMPTY STATE
+          ========================= */}
+
+          {(!mods || mods.length === 0) && (
             <div className="empty moderationEmpty">
 
               <div className="emptyIcon">
@@ -459,8 +545,7 @@ export default async function AdminModsPage({
               </div>
 
               <h2>
-                Tidak ada mod{" "}
-                {status}
+                Tidak ada mod {status}
               </h2>
 
               <p className="muted">
@@ -476,4 +561,4 @@ export default async function AdminModsPage({
       </div>
     </main>
   );
-        }
+              }
