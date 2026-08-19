@@ -1,176 +1,116 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase-server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: Request) {
   try {
-    const s = await supabaseServer();
+    const supabase = await supabaseServer();
 
+    /*
+     * Cek user login
+     */
     const {
       data: { user },
-    } = await s.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.redirect(
-        new URL("/login", req.url)
-      );
-    }
-
-    const form = await req.formData();
-
-    const modIdRaw = form.get("mod_id");
-
-    if (!modIdRaw) {
-      return NextResponse.redirect(
-        new URL("/dashboard?error=invalid_mod", req.url)
-      );
-    }
-
-    const mod_id = Number(modIdRaw);
-
-    if (!Number.isInteger(mod_id)) {
-      return NextResponse.redirect(
-        new URL("/dashboard?error=invalid_mod", req.url)
+      return NextResponse.json(
+        {
+          error: "Silakan login terlebih dahulu.",
+        },
+        { status: 401 }
       );
     }
 
     /*
-     * Ambil data mod
+     * Ambil data request
      */
+    const body = await req.json();
 
-    const { data: m, error: modError } = await s
-      .from("mods")
-      .select(`
-        id,
-        title,
-        slug,
-        price,
-        mod_type,
-        status
-      `)
-      .eq("id", mod_id)
-      .eq("status", "approved")
-      .single();
+    const mod_id = Number(body.mod_id);
 
-    if (modError || !m) {
-      console.error("Mod tidak ditemukan:", modError);
-
-      return NextResponse.redirect(
-        new URL("/dashboard?error=mod_not_found", req.url)
-      );
-    }
-
-    if (m.mod_type !== "paid") {
-      return NextResponse.redirect(
-        new URL(`/mod/${m.slug}`, req.url)
-      );
-    }
-
-    const amount = Math.round(Number(m.price));
-
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return NextResponse.redirect(
-        new URL(
-          `/checkout/${m.id}?error=invalid_price`,
-          req.url
-        )
+    if (!mod_id) {
+      return NextResponse.json(
+        {
+          error: "Mod ID tidak valid.",
+        },
+        { status: 400 }
       );
     }
 
     /*
-     * Cek apakah user sudah pernah punya order
+     * Ambil mod
      */
+    const { data: mod, error: modError } =
+      await supabase
+        .from("mods")
+        .select(`
+          id,
+          title,
+          slug,
+          price,
+          mod_type,
+          status
+        `)
+        .eq("id", mod_id)
+        .eq("status", "approved")
+        .single();
 
-    const { data: existing } = await s
-      .from("orders")
-      .select(`
-        id,
-        status,
-        amount,
-        payment_ref
-      `)
-      .eq("user_id", user.id)
-      .eq("mod_id", m.id)
-      .maybeSingle();
+    if (modError || !mod) {
+      return NextResponse.json(
+        {
+          error: "Mod tidak ditemukan.",
+        },
+        { status: 404 }
+      );
+    }
 
-    let orderId: string;
+    if (mod.mod_type !== "paid") {
+      return NextResponse.json(
+        {
+          error: "Mod ini bukan mod berbayar.",
+        },
+        { status: 400 }
+      );
+    }
 
-    /*
-     * Kalau sudah ada order paid,
-     * langsung kembali ke halaman mod.
-     */
+    const amount = Math.round(
+      Number(mod.price)
+    );
 
-    if (existing?.status === "paid") {
-      return NextResponse.redirect(
-        new URL(`/mod/${m.slug}`, req.url)
+    if (!amount || amount <= 0) {
+      return NextResponse.json(
+        {
+          error: "Harga mod tidak valid.",
+        },
+        { status: 400 }
       );
     }
 
     /*
-     * Gunakan order lama jika masih ada.
+     * Cek apakah sudah pernah membeli
      */
-
-    if (existing) {
-      orderId = String(existing.id);
-
-      const { error: updateError } = await s
+    const { data: existingPaid } =
+      await supabase
         .from("orders")
-        .update({
-          amount,
-          status: "pending",
-        })
-        .eq("id", existing.id);
+        .select("id,status")
+        .eq("user_id", user.id)
+        .eq("mod_id", mod.id)
+        .eq("status", "paid")
+        .maybeSingle();
 
-      if (updateError) {
-        console.error(
-          "Gagal update order:",
-          updateError
-        );
-
-        return NextResponse.redirect(
-          new URL(
-            `/checkout/${m.id}?error=order_failed`,
-            req.url
-          )
-        );
-      }
-    } else {
-      /*
-       * Buat order baru
-       */
-
-      const { data: newOrder, error: orderError } =
-        await s
-          .from("orders")
-          .insert({
-            user_id: user.id,
-            mod_id: m.id,
-            amount,
-            status: "pending",
-          })
-          .select("id")
-          .single();
-
-      if (orderError || !newOrder) {
-        console.error(
-          "Gagal membuat order:",
-          orderError
-        );
-
-        return NextResponse.redirect(
-          new URL(
-            `/checkout/${m.id}?error=order_failed`,
-            req.url
-          )
-        );
-      }
-
-      orderId = String(newOrder.id);
+    if (existingPaid) {
+      return NextResponse.json(
+        {
+          error: "Kamu sudah membeli mod ini.",
+        },
+        { status: 400 }
+      );
     }
 
     /*
-     * Pastikan Midtrans Server Key tersedia
+     * Ambil Server Key Midtrans
      */
-
     const serverKey =
       process.env.MIDTRANS_SERVER_KEY;
 
@@ -179,141 +119,213 @@ export async function POST(req: Request) {
         "MIDTRANS_SERVER_KEY belum diset."
       );
 
-      return NextResponse.redirect(
-        new URL(
-          `/checkout/${m.id}?error=payment_config`,
-          req.url
-        )
+      return NextResponse.json(
+        {
+          error:
+            "Midtrans belum dikonfigurasi di server.",
+        },
+        { status: 500 }
       );
     }
 
     /*
-     * Midtrans Sandbox
+     * Buat order terlebih dahulu
      *
-     * Server Key digunakan untuk Authorization.
+     * Kita gunakan Supabase Admin agar
+     * tidak terkena masalah RLS.
      */
+    const admin = supabaseAdmin();
 
-    const auth = Buffer
-      .from(`${serverKey}:`)
-      .toString("base64");
+    const { data: order, error: orderError } =
+      await admin
+        .from("orders")
+        .insert({
+          user_id: user.id,
+          mod_id: mod.id,
+          amount: amount,
+          status: "pending",
+        })
+        .select("id, amount, status")
+        .single();
+
+    if (orderError || !order) {
+      console.error(
+        "Order insert error:",
+        orderError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Gagal membuat order.",
+          detail:
+            orderError?.message,
+        },
+        { status: 500 }
+      );
+    }
 
     /*
-     * Buat transaksi Snap Midtrans
+     * Order ID Midtrans
      */
+    const orderId =
+      `KYZO-${order.id}`;
 
-    const midtransResponse = await fetch(
-      "https://app.sandbox.midtrans.com/snap/v1/transactions",
-      {
-        method: "POST",
+    /*
+     * Authorization:
+     *
+     * Base64(ServerKey:)
+     */
+    const auth = Buffer.from(
+      `${serverKey}:`
+    ).toString("base64");
 
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Basic ${auth}`,
-          Accept: "application/json",
-        },
+    /*
+     * Request Snap Token
+     */
+    const midtransResponse =
+      await fetch(
+        "https://app.sandbox.midtrans.com/snap/v1/transactions",
+        {
+          method: "POST",
 
-        body: JSON.stringify({
-          transaction_details: {
-            order_id: orderId,
-            gross_amount: amount,
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Accept:
+              "application/json",
+
+            Authorization:
+              `Basic ${auth}`,
           },
 
-          item_details: [
-            {
-              id: String(m.id),
-              price: amount,
-              quantity: 1,
-              name: String(m.title).slice(0, 50),
+          body: JSON.stringify({
+            transaction_details: {
+              order_id:
+                orderId,
+
+              gross_amount:
+                amount,
             },
-          ],
 
-          customer_details: {
-            first_name:
-              user.user_metadata?.full_name ||
-              user.user_metadata?.name ||
-              user.email?.split("@")[0] ||
-              "KyzoMods User",
+            item_details: [
+              {
+                id:
+                  String(mod.id),
 
-            email:
-              user.email || undefined,
-          },
+                price:
+                  amount,
 
-          enabled_payments: [
-            "gopay",
-          ],
+                quantity: 1,
 
-          callbacks: {
-            finish:
-              `${new URL(
-                `/mod/${m.slug}`,
-                req.url
-              ).toString()}`,
-          },
+                name:
+                  mod.title.slice(
+                    0,
+                    50
+                  ),
+              },
+            ],
 
-          expiry: {
-            unit: "hours",
-            duration: 1,
-          },
-        }),
-      }
-    );
+            enabled_payments: [
+              "gopay",
+            ],
 
-    const paymentData =
+            customer_details: {
+              email:
+                user.email ||
+                undefined,
+            },
+          }),
+        }
+      );
+
+    const midtransData =
       await midtransResponse.json();
 
     /*
-     * Midtrans gagal
+     * Kalau Midtrans gagal
      */
-
-    if (
-      !midtransResponse.ok ||
-      !paymentData.redirect_url
-    ) {
+    if (!midtransResponse.ok) {
       console.error(
         "Midtrans error:",
-        paymentData
+        midtransData
       );
 
-      return NextResponse.redirect(
-        new URL(
-          `/checkout/${m.id}?error=midtrans`,
-          req.url
-        )
+      /*
+       * Tandai order gagal
+       */
+      await admin
+        .from("orders")
+        .update({
+          status: "failed",
+        })
+        .eq(
+          "id",
+          order.id
+        );
+
+      return NextResponse.json(
+        {
+          error:
+            midtransData?.error_messages?.join(
+              " "
+            ) ||
+            midtransData?.status_message ||
+            "Midtrans menolak transaksi.",
+        },
+        {
+          status:
+            midtransResponse.status,
+        }
       );
     }
 
     /*
-     * Simpan reference transaksi
+     * Simpan payment reference
+     *
+     * Kita simpan order_id Midtrans.
      */
-
-    await s
+    await admin
       .from("orders")
       .update({
         payment_ref:
-          paymentData.token ||
           orderId,
       })
-      .eq("id", orderId);
+      .eq(
+        "id",
+        order.id
+      );
 
     /*
-     * Redirect user ke halaman pembayaran Midtrans
+     * Kirim token ke browser
      */
+    return NextResponse.json({
+      success: true,
 
-    return NextResponse.redirect(
-      paymentData.redirect_url
-    );
+      token:
+        midtransData.token,
 
+      order_id:
+        orderId,
+
+      redirect_url:
+        midtransData.redirect_url,
+    });
   } catch (error) {
     console.error(
-      "ORDER API ERROR:",
+      "Orders API error:",
       error
     );
 
-    return NextResponse.redirect(
-      new URL(
-        "/dashboard?error=payment_failed",
-        req.url
-      )
+    return NextResponse.json(
+      {
+        error:
+          "Terjadi kesalahan pada server.",
+      },
+      {
+        status: 500,
+      }
     );
   }
-        }
+      }
