@@ -12,6 +12,474 @@
 @media(max-width:800px){.heroGrid,.detail,.footerGrid{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.adminCards{grid-template-columns:1fr 1fr}.links{gap:10px;font-size:12px}}
 @media(max-width:520px){.grid{grid-template-columns:1fr}.hero{padding-top:55px}.hero h1{letter-spacing:-2px;font-size:42px}.links a:nth-child(1),.links a:nth-child(2){display:none}}
 
+/* =====================================================
+   KYZOMODS CHECKOUT
+===================================================== */
+
+.checkoutPage {
+  min-height: calc(100vh - 80px);
+  position: relative;
+  overflow: hidden;
+  padding: 55px 0 100px;
+  background:
+    radial-gradient(
+      circle at 15% 10%,
+      rgba(255, 109, 0, .12),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 90% 70%,
+      rgba(255, 109, 0, .07),
+      transparent 35%
+    ),
+    #05070b;
+}
+
+.checkoutContainer {
+  position: relative;
+  z-index: 2;
+}
+
+.checkoutGlow {
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: .12;
+  pointer-events: none;
+}
+
+.glowOne {
+  top: 80px;
+  left: -180px;
+  background: #ff6d00;
+}
+
+.glowTwo {
+  bottom: 50px;
+  right: -180px;
+  background: #ff6d00;
+}
+
+.checkoutBack {
+  margin-bottom: 28px;
+}
+
+.checkoutBack a {
+  color: #8c96a8;
+  text-decoration: none;
+  transition: .2s;
+}
+
+.checkoutBack a:hover {
+  color: #ff7900;
+}
+
+.checkoutLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.checkoutProduct,
+.checkoutCard {
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(10,14,21,.88);
+  backdrop-filter: blur(18px);
+  border-radius: 26px;
+  box-shadow:
+    0 25px 80px rgba(0,0,0,.35);
+}
+
+.checkoutProduct {
+  overflow: hidden;
+}
+
+.checkoutProductImage {
+  height: 390px;
+  position: relative;
+  overflow: hidden;
+  background: #0b0f16;
+}
+
+.checkoutProductImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.checkoutImageOverlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      to top,
+      rgba(5,7,11,.95),
+      transparent 55%
+    );
+}
+
+.checkoutProductBadge {
+  position: absolute;
+  left: 24px;
+  bottom: 22px;
+  padding: 8px 13px;
+  border-radius: 9px;
+  background: rgba(255,109,0,.13);
+  border: 1px solid rgba(255,109,0,.25);
+  color: #ff8625;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .7px;
+}
+
+.checkoutPlaceholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkoutPlaceholder img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+}
+
+.checkoutProductInfo {
+  padding: 30px;
+}
+
+.checkoutMiniBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #f4f5f7;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 22px;
+}
+
+.checkoutMiniBrand img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.checkoutMiniBrand b {
+  color: #ff7900;
+}
+
+.checkoutProductInfo h1 {
+  margin: 0 0 14px;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.1;
+  color: #fff;
+}
+
+.checkoutProductInfo p {
+  max-width: 650px;
+  color: #8d97a8;
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+.checkoutFeatures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 25px;
+}
+
+.checkoutFeatures div {
+  padding: 10px 13px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.07);
+  color: #aeb6c4;
+  font-size: 13px;
+}
+
+.checkoutFeatures span {
+  color: #ff7900;
+  margin-right: 6px;
+}
+
+/* CARD */
+
+.checkoutCard {
+  padding: 28px;
+}
+
+.checkoutCardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.checkoutEyebrow {
+  display: inline-block;
+  color: #ff8625;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin-bottom: 9px;
+}
+
+.checkoutCard h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 25px;
+}
+
+.checkoutSecure {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255,109,0,.1);
+  border: 1px solid rgba(255,109,0,.2);
+}
+
+.checkoutDivider {
+  height: 1px;
+  background: rgba(255,255,255,.07);
+  margin: 25px 0;
+}
+
+.checkoutSummary {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: center;
+  padding: 17px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+}
+
+.checkoutSummary span {
+  color: #a5afbf;
+  font-size: 14px;
+  max-width: 60%;
+}
+
+.checkoutSummary strong {
+  color: #ff8a2a;
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+.checkoutPayment {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 15px;
+  padding: 16px;
+  border: 1px solid rgba(255,109,0,.28);
+  background: rgba(255,109,0,.055);
+  border-radius: 14px;
+}
+
+.paymentIcon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #00a86b;
+  color: #fff;
+  font-size: 21px;
+  font-weight: 900;
+}
+
+.checkoutPayment strong {
+  display: block;
+  color: #fff;
+}
+
+.checkoutPayment small {
+  display: block;
+  color: #818b9c;
+  margin-top: 3px;
+}
+
+.paymentCheck {
+  margin-left: auto;
+  color: #25d89b;
+  font-size: 20px;
+}
+
+.checkoutPayButton {
+  width: 100%;
+  border: 0;
+  cursor: pointer;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    #ff7900,
+    #ff5a00
+  );
+  color: #111;
+  font-size: 15px;
+  font-weight: 900;
+  transition:
+    transform .2s,
+    box-shadow .2s,
+    opacity .2s;
+  box-shadow:
+    0 12px 35px rgba(255,109,0,.2);
+}
+
+.checkoutPayButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 18px 45px rgba(255,109,0,.32);
+}
+
+.checkoutPayButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.checkoutPayButton:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
+.checkoutSpinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0,0,0,.25);
+  border-top-color: #111;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: -3px;
+  animation: checkoutSpin .7s linear infinite;
+}
+
+@keyframes checkoutSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.checkoutError {
+  margin: 15px 0;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,70,90,.25);
+  background: rgba(255,50,70,.07);
+  color: #ff9aa5;
+}
+
+.checkoutError strong {
+  display: block;
+  color: #ff6575;
+  margin-bottom: 5px;
+}
+
+.checkoutError span {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.checkoutTrust {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 17px;
+  color: #6e7889;
+  font-size: 11px;
+}
+
+.checkoutNotice {
+  margin: 18px 0 0;
+  color: #687385;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.checkoutNotice b {
+  color: #9ba5b5;
+}
+
+/* MOBILE */
+
+@media (max-width: 850px) {
+  .checkoutPage {
+    padding: 28px 0 70px;
+  }
+
+  .checkoutLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .checkoutProductImage {
+    height: 260px;
+  }
+
+  .checkoutProductInfo {
+    padding: 23px;
+  }
+
+  .checkoutCard {
+    padding: 22px;
+  }
+
+  .checkoutProductInfo h1 {
+    font-size: 29px;
+  }
+}
+
+@media (max-width: 480px) {
+  .checkoutLayout {
+    gap: 18px;
+  }
+
+  .checkoutProduct,
+  .checkoutCard {
+    border-radius: 20px;
+  }
+
+  .checkoutProductImage {
+    height: 220px;
+  }
+
+  .checkoutProductInfo {
+    padding: 20px;
+  }
+
+  .checkoutCard {
+    padding: 18px;
+  }
+
+  .checkoutSummary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .checkoutSummary span {
+    max-width: 100%;
+  }
+
+  .checkoutSummary strong {
+    font-size: 22px;
+  }
+
+  .checkoutFeatures {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+     }
+
 /* =========================
    KYZO MODS - RATINGS
 ========================= */
