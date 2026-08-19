@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type Mod = {
   id: number;
@@ -11,253 +11,327 @@ type Mod = {
   thumbnail_url?: string | null;
 };
 
-declare global {
-  interface Window {
-    snap?: {
-      pay: (
-        token: string,
-        options?: {
-          onSuccess?: (result: any) => void;
-          onPending?: (result: any) => void;
-          onError?: (result: any) => void;
-          onClose?: () => void;
-        }
-      ) => void;
-    };
-  }
-}
-
-export function CheckoutClient({ mod }: { mod: Mod }) {
+export function CheckoutClient({
+  mod,
+}: {
+  mod: Mod;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  /*
-   * Load Midtrans Snap JS
-   */
-  useEffect(() => {
-    const clientKey =
-      process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY;
+  async function handleSubmit(
+    e: React.FormEvent<HTMLFormElement>
+  ) {
+    e.preventDefault();
 
-    if (!clientKey) {
-      console.error(
-        "NEXT_PUBLIC_MIDTRANS_CLIENT_KEY belum diset."
-      );
-      return;
-    }
+    if (loading) return;
 
-    if (document.getElementById("midtrans-snap")) {
-      return;
-    }
+    setLoading(true);
+    setError("");
 
-    const script = document.createElement("script");
-
-    script.id = "midtrans-snap";
-
-    /*
-     * Sandbox
-     */
-    script.src =
-      "https://app.sandbox.midtrans.com/snap/snap.js";
-
-    script.setAttribute(
-      "data-client-key",
-      clientKey
-    );
-
-    script.async = true;
-
-    document.body.appendChild(script);
-
-    return () => {
-      const oldScript =
-        document.getElementById("midtrans-snap");
-
-      if (oldScript) {
-        oldScript.remove();
-      }
-    };
-  }, []);
-
-  async function handlePayment() {
     try {
-      setLoading(true);
-      setError("");
+      const formData = new FormData();
 
-      /*
-       * Tunggu Snap JS tersedia
-       */
-      let attempts = 0;
+      formData.append(
+        "mod_id",
+        String(mod.id)
+      );
 
-      while (!window.snap && attempts < 50) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, 100)
-        );
-
-        attempts++;
-      }
-
-      if (!window.snap) {
-        throw new Error(
-          "Midtrans belum siap. Silakan refresh halaman."
-        );
-      }
-
-      /*
-       * Buat transaksi di server
-       */
       const response = await fetch(
         "/api/orders",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mod_id: mod.id,
-          }),
+          body: formData,
         }
       );
 
-      const data = await response.json();
+      /*
+       * Jika backend mengembalikan redirect
+       * dari NextResponse.redirect(), fetch
+       * akan mengikuti redirect tersebut.
+       */
+
+      if (
+        response.redirected &&
+        response.url
+      ) {
+        window.location.href =
+          response.url;
+
+        return;
+      }
+
+      const data =
+        await response.json().catch(
+          () => null
+        );
+
+      if (
+        data?.alreadyPaid &&
+        data?.redirectUrl
+      ) {
+        window.location.href =
+          data.redirectUrl;
+
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
           data?.error ||
-            "Gagal membuat transaksi Midtrans."
+            "Gagal membuat transaksi."
         );
       }
 
-      if (!data.token) {
-        throw new Error(
-          "Token pembayaran Midtrans tidak ditemukan."
-        );
+      if (data?.redirectUrl) {
+        window.location.href =
+          data.redirectUrl;
+
+        return;
       }
 
-      /*
-       * Buka Midtrans Snap
-       */
-      window.snap.pay(data.token, {
-        onSuccess: (result) => {
-          console.log(
-            "Pembayaran berhasil:",
-            result
-          );
-
-          setLoading(false);
-
-          window.location.href =
-            `/mod/${mod.slug}?payment=success`;
-        },
-
-        onPending: (result) => {
-          console.log(
-            "Pembayaran pending:",
-            result
-          );
-
-          setLoading(false);
-
-          setError(
-            "Pembayaran sedang menunggu konfirmasi."
-          );
-        },
-
-        onError: (result) => {
-          console.error(
-            "Midtrans payment error:",
-            result
-          );
-
-          setLoading(false);
-
-          setError(
-            "Pembayaran gagal. Silakan coba lagi."
-          );
-        },
-
-        onClose: () => {
-          console.log(
-            "Popup Midtrans ditutup."
-          );
-
-          setLoading(false);
-        },
-      });
-    } catch (err: any) {
+      throw new Error(
+        "Midtrans tidak memberikan URL pembayaran."
+      );
+    } catch (err) {
       console.error(
-        "Checkout error:",
+        "CHECKOUT ERROR:",
         err
       );
 
-      setLoading(false);
-
       setError(
-        err?.message ||
-          "Gagal menghubungkan ke Midtrans."
+        err instanceof Error
+          ? err.message
+          : "Gagal membuat transaksi."
       );
+
+      setLoading(false);
     }
   }
 
+  const price = Number(mod.price);
+
   return (
     <main className="checkoutPage">
-      <div className="container">
 
-        <div className="checkoutCard">
+      <div className="checkoutGlow glowOne" />
+      <div className="checkoutGlow glowTwo" />
 
-          <div className="checkoutBadge">
-            SECURE CHECKOUT · GOPAY
-          </div>
+      <div className="container checkoutContainer">
 
-          {mod.thumbnail_url && (
-            <img
-              src={mod.thumbnail_url}
-              alt={mod.title}
-              className="checkoutThumbnail"
-            />
-          )}
+        <div className="checkoutBack">
+          <a href={`/mod/${mod.slug}`}>
+            ← Kembali ke mod
+          </a>
+        </div>
 
-          <h1>{mod.title}</h1>
+        <div className="checkoutLayout">
 
-          <p className="checkoutDescription">
-            Pembayaran diproses melalui Midtrans
-            dengan metode GoPay.
-          </p>
+          {/* LEFT */}
 
-          <div className="checkoutPrice">
-            Rp{" "}
-            {Number(mod.price).toLocaleString(
-              "id-ID"
-            )}
-          </div>
+          <section className="checkoutProduct">
 
-          {error && (
-            <div className="checkoutError">
-              {error}
+            <div className="checkoutProductImage">
+
+              {mod.thumbnail_url ? (
+                <img
+                  src={mod.thumbnail_url}
+                  alt={mod.title}
+                />
+              ) : (
+                <div className="checkoutPlaceholder">
+                  <img
+                    src="/kyzo-logo.svg"
+                    alt="KyzoMods"
+                  />
+                </div>
+              )}
+
+              <div className="checkoutImageOverlay" />
+
+              <span className="checkoutProductBadge">
+                PREMIUM MOD
+              </span>
+
             </div>
-          )}
 
-          <button
-            type="button"
-            className="checkoutPayButton"
-            onClick={handlePayment}
-            disabled={loading}
-          >
-            {loading
-              ? "Menghubungkan ke Midtrans..."
-              : "Bayar dengan GoPay"}
-          </button>
+            <div className="checkoutProductInfo">
 
-          <p className="checkoutNotice">
-            Jangan tutup halaman sebelum
-            menyelesaikan pembayaran. Akses
-            download hanya dibuka setelah server
-            menerima status pembayaran yang
-            terverifikasi.
-          </p>
+              <div className="checkoutMiniBrand">
+                <img
+                  src="/kyzo-logo.svg"
+                  alt="KyzoMods"
+                />
+
+                <span>
+                  KYZO <b>MODS</b>
+                </span>
+              </div>
+
+              <h1>
+                {mod.title}
+              </h1>
+
+              <p>
+                Dapatkan akses penuh ke resource
+                premium ini setelah pembayaran
+                berhasil diverifikasi.
+              </p>
+
+              <div className="checkoutFeatures">
+
+                <div>
+                  <span>✓</span>
+                  Instant access
+                </div>
+
+                <div>
+                  <span>✓</span>
+                  Pembayaran aman
+                </div>
+
+                <div>
+                  <span>✓</span>
+                  Download setelah paid
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+
+          {/* RIGHT */}
+
+          <section className="checkoutCard">
+
+            <div className="checkoutCardTop">
+
+              <div>
+                <span className="checkoutEyebrow">
+                  SECURE CHECKOUT
+                </span>
+
+                <h2>
+                  Selesaikan Pembayaran
+                </h2>
+              </div>
+
+              <div className="checkoutSecure">
+                🔒
+              </div>
+
+            </div>
+
+            <div className="checkoutDivider" />
+
+            <div className="checkoutSummary">
+
+              <span>
+                {mod.title}
+              </span>
+
+              <strong>
+                Rp{" "}
+                {price.toLocaleString(
+                  "id-ID"
+                )}
+              </strong>
+
+            </div>
+
+            <div className="checkoutPayment">
+
+              <div className="paymentIcon">
+                G
+              </div>
+
+              <div>
+                <strong>
+                  GoPay
+                </strong>
+
+                <small>
+                  Diproses melalui Midtrans
+                </small>
+              </div>
+
+              <span className="paymentCheck">
+                ✓
+              </span>
+
+            </div>
+
+            {error && (
+              <div className="checkoutError">
+                <strong>
+                  Pembayaran gagal
+                </strong>
+
+                <span>
+                  {error}
+                </span>
+              </div>
+            )}
+
+            <form
+              onSubmit={handleSubmit}
+            >
+
+              <button
+                type="submit"
+                className="checkoutPayButton"
+                disabled={loading}
+              >
+
+                {loading ? (
+                  <>
+                    <span className="checkoutSpinner" />
+                    Menghubungkan...
+                  </>
+                ) : (
+                  <>
+                    Bayar Rp{" "}
+                    {price.toLocaleString(
+                      "id-ID"
+                    )}
+                  </>
+                )}
+
+              </button>
+
+            </form>
+
+            <div className="checkoutTrust">
+
+              <span>
+                🔒 Secure payment
+              </span>
+
+              <span>
+                •
+              </span>
+
+              <span>
+                Midtrans
+              </span>
+
+            </div>
+
+            <p className="checkoutNotice">
+              Setelah pembayaran berhasil,
+              server akan menerima notifikasi
+              pembayaran dari Midtrans. Download
+              hanya akan tersedia setelah transaksi
+              berstatus <b>paid</b>.
+            </p>
+
+          </section>
 
         </div>
 
       </div>
+
     </main>
   );
-    }
+      }
