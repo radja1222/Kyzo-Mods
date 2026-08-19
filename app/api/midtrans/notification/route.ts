@@ -30,12 +30,21 @@ export async function POST(req: Request) {
       fraud_status,
     } = notification;
 
+    /*
+     * Validasi notification
+     */
+
     if (
       !order_id ||
       !status_code ||
       !gross_amount ||
       !signature_key
     ) {
+      console.error(
+        "Notification Midtrans tidak lengkap:",
+        notification
+      );
+
       return new NextResponse(
         "Invalid notification",
         { status: 400 }
@@ -43,7 +52,13 @@ export async function POST(req: Request) {
     }
 
     /*
-     * Verifikasi Signature Midtrans
+     * ==========================================
+     * VERIFIKASI SIGNATURE MIDTRANS
+     * ==========================================
+     *
+     * SHA512:
+     *
+     * order_id + status_code + gross_amount + ServerKey
      */
 
     const raw =
@@ -67,29 +82,60 @@ export async function POST(req: Request) {
       );
     }
 
-    const s = supabaseAdmin();
-
     /*
-     * Cari order berdasarkan ID
+     * Supabase Admin
      */
 
-    const { data: order, error } =
-      await s
-        .from("orders")
-        .select(`
-          id,
-          user_id,
-          mod_id,
-          amount,
-          status
-        `)
-        .eq("id", order_id)
-        .single();
+    const supabase =
+      supabaseAdmin();
 
-    if (error || !order) {
+    /*
+     * ==========================================
+     * CARI ORDER
+     * ==========================================
+     *
+     * Midtrans:
+     *
+     * KYZO-3
+     *
+     * Database:
+     *
+     * orders.id = 3
+     *
+     * Jadi kita cari menggunakan:
+     *
+     * payment_ref = KYZO-3
+     */
+
+    const {
+      data: order,
+      error: orderError,
+    } = await supabase
+      .from("orders")
+      .select(`
+        id,
+        user_id,
+        mod_id,
+        amount,
+        status,
+        payment_ref
+      `)
+      .eq(
+        "payment_ref",
+        String(order_id)
+      )
+      .maybeSingle();
+
+    if (
+      orderError ||
+      !order
+    ) {
       console.error(
         "Order tidak ditemukan:",
-        error
+        {
+          order_id,
+          error: orderError,
+        }
       );
 
       return new NextResponse(
@@ -99,24 +145,36 @@ export async function POST(req: Request) {
     }
 
     /*
-     * Pastikan nominal sama
+     * ==========================================
+     * CEK NOMINAL
+     * ==========================================
      */
 
-    const orderAmount = Math.round(
-      Number(order.amount)
-    );
+    const orderAmount =
+      Math.round(
+        Number(order.amount)
+      );
 
-    const midtransAmount = Math.round(
-      Number(gross_amount)
-    );
+    const midtransAmount =
+      Math.round(
+        Number(gross_amount)
+      );
 
     if (
-      orderAmount !== midtransAmount
+      orderAmount !==
+      midtransAmount
     ) {
       console.error(
         "Amount mismatch:",
         {
+          orderId:
+            order.id,
+
+          midtransOrderId:
+            order_id,
+
           orderAmount,
+
           midtransAmount,
         }
       );
@@ -128,26 +186,47 @@ export async function POST(req: Request) {
     }
 
     /*
-     * Tentukan status pembayaran
+     * ==========================================
+     * TENTUKAN STATUS
+     * ==========================================
      */
 
-    let newStatus = "pending";
+    let newStatus:
+      | "pending"
+      | "paid"
+      | "failed" =
+      "pending";
+
+    /*
+     * Pembayaran berhasil
+     */
 
     if (
-      transaction_status === "settlement"
+      transaction_status ===
+      "settlement"
     ) {
       newStatus = "paid";
     }
 
+    /*
+     * Credit card capture
+     */
+
     else if (
-      transaction_status === "capture" &&
+      transaction_status ===
+        "capture" &&
       (
         !fraud_status ||
-        fraud_status === "accept"
+        fraud_status ===
+          "accept"
       )
     ) {
       newStatus = "paid";
     }
+
+    /*
+     * Pembayaran gagal
+     */
 
     else if (
       [
@@ -155,19 +234,29 @@ export async function POST(req: Request) {
         "cancel",
         "deny",
         "failure",
-      ].includes(transaction_status)
+      ].includes(
+        transaction_status
+      )
     ) {
       newStatus = "failed";
     }
 
     /*
-     * Jangan turunkan order yang sudah paid.
+     * ==========================================
+     * JANGAN TURUNKAN ORDER YANG SUDAH PAID
+     * ==========================================
      */
 
     if (
-      order.status === "paid" &&
-      newStatus !== "paid"
+      order.status ===
+        "paid" &&
+      newStatus !==
+        "paid"
     ) {
+      console.log(
+        `Order ${order_id} sudah paid.`
+      );
+
       return new NextResponse(
         "OK",
         { status: 200 }
@@ -175,19 +264,35 @@ export async function POST(req: Request) {
     }
 
     /*
-     * Update order
+     * ==========================================
+     * UPDATE ORDER
+     * ==========================================
      */
 
-    const { error: updateError } =
-      await s
-        .from("orders")
-        .update({
-          status: newStatus,
-          payment_ref:
-            transaction_id ||
-            String(order_id),
-        })
-        .eq("id", order.id);
+    const {
+      error: updateError,
+    } = await supabase
+      .from("orders")
+      .update({
+        status:
+          newStatus,
+
+        /*
+         * Setelah notification
+         * berhasil, simpan transaction_id
+         * dari Midtrans.
+         *
+         * Kalau transaction_id tidak tersedia,
+         * tetap pertahankan order_id.
+         */
+        payment_ref:
+          transaction_id ||
+          String(order_id),
+      })
+      .eq(
+        "id",
+        order.id
+      );
 
     if (updateError) {
       console.error(
@@ -201,9 +306,45 @@ export async function POST(req: Request) {
       );
     }
 
+    /*
+     * Log
+     */
+
     console.log(
-      `Midtrans order ${order_id}: ${newStatus}`
+      "================================="
     );
+
+    console.log(
+      "MIDTRANS PAYMENT UPDATE"
+    );
+
+    console.log(
+      "Midtrans Order:",
+      order_id
+    );
+
+    console.log(
+      "Database Order:",
+      order.id
+    );
+
+    console.log(
+      "Transaction:",
+      transaction_id
+    );
+
+    console.log(
+      "Status:",
+      newStatus
+    );
+
+    console.log(
+      "================================="
+    );
+
+    /*
+     * Midtrans membutuhkan HTTP 200
+     */
 
     return new NextResponse(
       "OK",
@@ -221,4 +362,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+          }
