@@ -4,11 +4,9 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: Request) {
   try {
-    /*
-     * =========================
-     * AUTH USER
-     * =========================
-     */
+    // =========================
+    // AUTH
+    // =========================
 
     const supabase = await supabaseServer();
 
@@ -22,72 +20,73 @@ export async function POST(req: Request) {
       );
     }
 
-    /*
-     * =========================
-     * GET FORM DATA
-     * =========================
-     */
+    // =========================
+    // FORM
+    // =========================
 
     const form = await req.formData();
 
     const modIdRaw = form.get("mod_id");
 
-    if (!modIdRaw) {
-      return NextResponse.redirect(
-        new URL(
-          "/dashboard?order=invalid_mod",
-          req.url
-        )
-      );
-    }
-
     const modId = Number(modIdRaw);
 
-    if (!Number.isInteger(modId) || modId <= 0) {
+    if (
+      !modIdRaw ||
+      !Number.isInteger(modId) ||
+      modId <= 0
+    ) {
       return NextResponse.redirect(
         new URL(
-          "/dashboard?order=invalid_mod",
+          "/dashboard?order=invalid_mod_id",
           req.url
         )
       );
     }
 
-    /*
-     * =========================
-     * ADMIN CLIENT
-     * =========================
-     *
-     * Service role digunakan untuk
-     * melewati RLS saat membuat order.
-     */
+    // =========================
+    // ADMIN SUPABASE
+    // =========================
 
     const admin = supabaseAdmin();
 
-    /*
-     * =========================
-     * CEK MOD
-     * =========================
-     */
+    // =========================
+    // CARI MOD
+    // =========================
 
-    const { data: mod, error: modError } =
-      await admin
-        .from("mods")
-        .select(`
-          id,
-          title,
-          slug,
-          price,
-          mod_type,
-          status
-        `)
-        .eq("id", modId)
-        .eq("status", "approved")
-        .single();
+    const {
+      data: mod,
+      error: modError,
+    } = await admin
+      .from("mods")
+      .select(`
+        id,
+        title,
+        slug,
+        price,
+        mod_type,
+        status
+      `)
+      .eq("id", modId)
+      .maybeSingle();
 
-    if (modError || !mod) {
+    if (modError) {
       console.error(
-        "MOD TIDAK DITEMUKAN:",
+        "DATABASE ERROR MOD:",
         modError
+      );
+
+      return NextResponse.redirect(
+        new URL(
+          `/checkout/${modId}?error=mod_database`,
+          req.url
+        )
+      );
+    }
+
+    if (!mod) {
+      console.error(
+        "MOD TIDAK ADA:",
+        modId
       );
 
       return NextResponse.redirect(
@@ -98,9 +97,40 @@ export async function POST(req: Request) {
       );
     }
 
-    /*
-     * Pastikan mod memang berbayar
-     */
+    console.log(
+      "MOD DITEMUKAN:",
+      {
+        id: mod.id,
+        title: mod.title,
+        status: mod.status,
+        type: mod.mod_type,
+      }
+    );
+
+    // =========================
+    // CEK STATUS
+    // =========================
+
+    if (mod.status !== "approved") {
+      console.error(
+        "MOD BELUM APPROVED:",
+        {
+          id: mod.id,
+          status: mod.status,
+        }
+      );
+
+      return NextResponse.redirect(
+        new URL(
+          `/checkout/${modId}?error=mod_not_approved`,
+          req.url
+        )
+      );
+    }
+
+    // =========================
+    // CEK PAID
+    // =========================
 
     if (mod.mod_type !== "paid") {
       return NextResponse.redirect(
@@ -111,44 +141,59 @@ export async function POST(req: Request) {
       );
     }
 
-    /*
-     * =========================
-     * VALIDASI HARGA
-     * =========================
-     */
+    // =========================
+    // HARGA
+    // =========================
 
     const amount = Math.round(
       Number(mod.price)
     );
 
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
       console.error(
-        "Harga mod tidak valid:",
+        "HARGA INVALID:",
         mod.price
       );
 
       return NextResponse.redirect(
         new URL(
-          `/checkout/${mod.id}?error=invalid_price`,
+          `/checkout/${modId}?error=invalid_price`,
           req.url
         )
       );
     }
 
-    /*
-     * =========================
-     * CEK ORDER PAID
-     * =========================
-     */
+    // =========================
+    // CEK ORDER PAID
+    // =========================
 
-    const { data: paidOrder } =
-      await admin
-        .from("orders")
-        .select("id,status")
-        .eq("user_id", user.id)
-        .eq("mod_id", mod.id)
-        .eq("status", "paid")
-        .maybeSingle();
+    const {
+      data: paidOrder,
+      error: paidError,
+    } = await admin
+      .from("orders")
+      .select("id,status")
+      .eq("user_id", user.id)
+      .eq("mod_id", mod.id)
+      .eq("status", "paid")
+      .maybeSingle();
+
+    if (paidError) {
+      console.error(
+        "GAGAL CEK ORDER PAID:",
+        paidError
+      );
+
+      return NextResponse.redirect(
+        new URL(
+          `/checkout/${modId}?error=order_check`,
+          req.url
+        )
+      );
+    }
 
     if (paidOrder) {
       return NextResponse.redirect(
@@ -159,104 +204,113 @@ export async function POST(req: Request) {
       );
     }
 
-    /*
-     * =========================
-     * CEK ORDER PENDING
-     * =========================
-     */
+    // =========================
+    // CARI PENDING ORDER
+    // =========================
 
-    const { data: existingOrder } =
-      await admin
-        .from("orders")
-        .select(`
-          id,
-          user_id,
-          mod_id,
-          amount,
-          status,
-          payment_ref
-        `)
-        .eq("user_id", user.id)
-        .eq("mod_id", mod.id)
-        .eq("status", "pending")
-        .maybeSingle();
+    const {
+      data: pendingOrder,
+      error: pendingError,
+    } = await admin
+      .from("orders")
+      .select(`
+        id,
+        amount,
+        status
+      `)
+      .eq("user_id", user.id)
+      .eq("mod_id", mod.id)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (pendingError) {
+      console.error(
+        "GAGAL CEK PENDING ORDER:",
+        pendingError
+      );
+
+      return NextResponse.redirect(
+        new URL(
+          `/checkout/${modId}?error=order_check`,
+          req.url
+        )
+      );
+    }
 
     let orderId: string | number;
 
-    /*
-     * Kalau sudah ada pending order,
-     * gunakan order tersebut.
-     */
+    // =========================
+    // GUNAKAN ORDER LAMA
+    // =========================
 
-    if (existingOrder) {
-      orderId = existingOrder.id;
+    if (pendingOrder) {
+      orderId = pendingOrder.id;
 
-      /*
-       * Pastikan nominal mengikuti harga
-       * mod terbaru.
-       */
+      const oldAmount = Math.round(
+        Number(pendingOrder.amount)
+      );
 
-      if (
-        Math.round(
-          Number(existingOrder.amount)
-        ) !== amount
-      ) {
-        const { error: updateError } =
-          await admin
-            .from("orders")
-            .update({
-              amount,
-            })
-            .eq("id", existingOrder.id);
+      if (oldAmount !== amount) {
+        const {
+          error: updateError,
+        } = await admin
+          .from("orders")
+          .update({
+            amount,
+          })
+          .eq("id", pendingOrder.id);
 
         if (updateError) {
           console.error(
-            "Gagal update amount:",
+            "GAGAL UPDATE ORDER:",
             updateError
           );
 
           return NextResponse.redirect(
             new URL(
-              `/checkout/${mod.id}?error=order_update`,
+              `/checkout/${modId}?error=order_update`,
               req.url
             )
           );
         }
       }
-    } else {
-      /*
-       * =========================
-       * BUAT ORDER BARU
-       * =========================
-       */
+    }
 
-      const { data: newOrder, error: orderError } =
-        await admin
-          .from("orders")
-          .insert({
-            user_id: user.id,
-            mod_id: mod.id,
-            amount,
-            status: "pending",
-          })
-          .select(`
-            id,
-            user_id,
-            mod_id,
-            amount,
-            status
-          `)
-          .single();
+    // =========================
+    // BUAT ORDER BARU
+    // =========================
 
-      if (orderError || !newOrder) {
+    else {
+      const {
+        data: newOrder,
+        error: insertError,
+      } = await admin
+        .from("orders")
+        .insert({
+          user_id: user.id,
+          mod_id: mod.id,
+          amount,
+          status: "pending",
+        })
+        .select(`
+          id,
+          amount,
+          status
+        `)
+        .single();
+
+      if (
+        insertError ||
+        !newOrder
+      ) {
         console.error(
-          "GAGAL MEMBUAT ORDER:",
-          orderError
+          "GAGAL INSERT ORDER:",
+          insertError
         );
 
         return NextResponse.redirect(
           new URL(
-            `/checkout/${mod.id}?error=order_create`,
+            `/checkout/${modId}?error=order_create`,
             req.url
           )
         );
@@ -265,31 +319,25 @@ export async function POST(req: Request) {
       orderId = newOrder.id;
     }
 
-    /*
-     * =========================
-     * MIDTRANS CONFIG
-     * =========================
-     */
+    // =========================
+    // MIDTRANS
+    // =========================
 
     const serverKey =
       process.env.MIDTRANS_SERVER_KEY;
 
     if (!serverKey) {
       console.error(
-        "MIDTRANS_SERVER_KEY tidak ditemukan."
+        "MIDTRANS_SERVER_KEY KOSONG"
       );
 
       return NextResponse.redirect(
         new URL(
-          `/checkout/${mod.id}?error=midtrans_config`,
+          `/checkout/${modId}?error=midtrans_config`,
           req.url
         )
       );
     }
-
-    /*
-     * Sandbox / Production
-     */
 
     const isProduction =
       process.env.MIDTRANS_IS_PRODUCTION ===
@@ -299,29 +347,23 @@ export async function POST(req: Request) {
       ? "https://app.midtrans.com/snap/v1/transactions"
       : "https://app.sandbox.midtrans.com/snap/v1/transactions";
 
-    /*
-     * Midtrans order_id harus unik.
-     *
-     * Karena webhook kita mencari order
-     * berdasarkan ID database, kita gunakan
-     * ID order database sebagai order_id.
-     */
+    // =========================
+    // MIDTRANS ORDER ID
+    // =========================
 
     const midtransOrderId =
-      String(orderId);
+      `KYZO-${orderId}-${Date.now()}`;
 
-    /*
-     * =========================
-     * CREATE MIDTRANS SNAP
-     * =========================
-     */
-
-    const auth =
+    const authorization =
       Buffer.from(
         `${serverKey}:`
       ).toString("base64");
 
-    const midtransPayload = {
+    // =========================
+    // REQUEST MIDTRANS
+    // =========================
+
+    const payload = {
       transaction_details: {
         order_id: midtransOrderId,
         gross_amount: amount,
@@ -340,34 +382,15 @@ export async function POST(req: Request) {
         first_name:
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||
-          user.email?.split("@")[0] ||
           "Kyzo User",
 
         email:
           user.email || undefined,
       },
 
-      /*
-       * Kita prioritaskan GoPay.
-       */
-
       enabled_payments: [
         "gopay",
       ],
-
-      /*
-       * Setelah pembayaran,
-       * Midtrans dapat mengarahkan user
-       * kembali ke halaman mod.
-       */
-
-      callbacks: {
-        finish:
-          `${new URL(
-            `/mod/${mod.slug}`,
-            req.url
-          ).toString()}`,
-      },
 
       expiry: {
         unit: "minutes",
@@ -376,111 +399,117 @@ export async function POST(req: Request) {
     };
 
     console.log(
-      "Mengirim order ke Midtrans:",
+      "MIDTRANS REQUEST:",
       {
         order_id: midtransOrderId,
         amount,
-        mod_id: mod.id,
       }
     );
 
-    const midtransResponse =
+    const response =
       await fetch(midtransUrl, {
         method: "POST",
 
         headers: {
-          Accept: "application/json",
+          Accept:
+            "application/json",
+
           "Content-Type":
             "application/json",
+
           Authorization:
-            `Basic ${auth}`,
+            `Basic ${authorization}`,
         },
 
         body: JSON.stringify(
-          midtransPayload
+          payload
         ),
       });
 
-    const midtransData =
-      await midtransResponse.json();
+    const result =
+      await response.json();
 
-    /*
-     * =========================
-     * MIDTRANS ERROR
-     * =========================
-     */
+    // =========================
+    // MIDTRANS ERROR
+    // =========================
 
-    if (!midtransResponse.ok) {
+    if (!response.ok) {
       console.error(
         "MIDTRANS ERROR:",
-        midtransData
+        result
       );
 
       return NextResponse.redirect(
         new URL(
-          `/checkout/${mod.id}?error=midtrans`,
+          `/checkout/${modId}?error=midtrans`,
           req.url
         )
       );
     }
 
-    /*
-     * =========================
-     * SIMPAN SNAP TOKEN
-     * =========================
-     */
+    console.log(
+      "MIDTRANS BERHASIL:",
+      result
+    );
 
-    const paymentRef =
-      midtransData.token ||
-      midtransData.redirect_url ||
-      midtransOrderId;
+    // =========================
+    // SIMPAN PAYMENT REF
+    // =========================
 
     const { error: saveError } =
       await admin
         .from("orders")
         .update({
-          payment_ref: paymentRef,
+          payment_ref:
+            result.token ||
+            midtransOrderId,
         })
         .eq("id", orderId);
 
     if (saveError) {
       console.error(
-        "Gagal menyimpan payment_ref:",
+        "GAGAL SIMPAN PAYMENT REF:",
         saveError
       );
     }
 
-    /*
-     * =========================
-     * REDIRECT KE MIDTRANS
-     * =========================
-     */
+    // =========================
+    // REDIRECT MIDTRANS
+    // =========================
 
-    if (
-      midtransData.redirect_url
-    ) {
+    if (result.redirect_url) {
       return NextResponse.redirect(
-        midtransData.redirect_url,
+        result.redirect_url,
         303
       );
     }
 
     /*
-     * Jika Midtrans tidak memberikan
-     * redirect_url, gunakan Snap token.
-     *
-     * Untuk sementara kita tampilkan
-     * error agar mudah debugging.
+     * Kalau hanya mendapat token,
+     * berarti kita perlu Snap JS
+     * di frontend.
      */
 
+    if (result.token) {
+      return NextResponse.redirect(
+        new URL(
+          `/checkout/${modId}?snap_token=${encodeURIComponent(
+            result.token
+          )}`,
+          req.url
+        ),
+        303
+      );
+    }
+
     console.error(
-      "Midtrans tidak memberikan redirect_url:",
-      midtransData
+      "MIDTRANS TIDAK MEMBERIKAN TOKEN/REDIRECT:",
+      result
     );
 
     return NextResponse.redirect(
       new URL(
-        `/checkout/${mod.id}?error=no_redirect`,
+        `/checkout/${modId}?error=no_payment_url`,
         req.url
       )
     );
@@ -498,4 +527,4 @@ export async function POST(req: Request) {
       )
     );
   }
-        }
+          }
