@@ -4,11 +4,9 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: Request) {
   try {
-    /*
-     * =========================
-     * CEK USER
-     * =========================
-     */
+    // =========================
+    // AUTH
+    // =========================
 
     const supabase = await supabaseServer();
 
@@ -25,11 +23,9 @@ export async function POST(req: Request) {
       );
     }
 
-    /*
-     * =========================
-     * AMBIL FORM
-     * =========================
-     */
+    // =========================
+    // FORM
+    // =========================
 
     const form = await req.formData();
 
@@ -55,22 +51,13 @@ export async function POST(req: Request) {
       );
     }
 
-    /*
-     * =========================
-     * ADMIN CLIENT
-     * =========================
-     */
-
-    const admin = supabaseAdmin();
-
-    /*
-     * =========================
-     * CEK MOD
-     * =========================
-     */
+    // =========================
+    // CARI MOD
+    // PAKAI SERVER CLIENT
+    // =========================
 
     const { data: mod, error: modError } =
-      await admin
+      await supabase
         .from("mods")
         .select(`
           id,
@@ -82,42 +69,47 @@ export async function POST(req: Request) {
         `)
         .eq("id", modId)
         .eq("status", "approved")
-        .single();
+        .maybeSingle();
 
-    if (modError || !mod) {
+    if (modError) {
       console.error(
-        "MOD TIDAK DITEMUKAN:",
+        "ERROR MENCARI MOD:",
         modError
       );
 
       return NextResponse.json(
         {
-          error: "Mod tidak ditemukan atau belum disetujui.",
+          error: "Gagal mengambil data mod.",
+          details: modError.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!mod) {
+      return NextResponse.json(
+        {
+          error:
+            "Mod tidak ditemukan atau belum disetujui.",
+          modId,
         },
         { status: 404 }
       );
     }
 
-    /*
-     * =========================
-     * HARUS PAID
-     * =========================
-     */
+    // =========================
+    // VALIDASI MOD
+    // =========================
 
     if (mod.mod_type !== "paid") {
       return NextResponse.json(
         {
-          error: "Mod ini gratis dan tidak membutuhkan pembayaran.",
+          error:
+            "Mod ini bukan mod berbayar.",
         },
         { status: 400 }
       );
     }
-
-    /*
-     * =========================
-     * VALIDASI HARGA
-     * =========================
-     */
 
     const amount = Number(mod.price);
 
@@ -130,32 +122,49 @@ export async function POST(req: Request) {
       );
     }
 
-    /*
-     * =========================
-     * CEK ORDER PAID
-     * =========================
-     */
+    // =========================
+    // ADMIN CLIENT
+    // HANYA UNTUK ORDERS
+    // =========================
 
-    const { data: paidOrder, error: paidError } =
-      await admin
-        .from("orders")
-        .select("id,status")
-        .eq("user_id", user.id)
-        .eq("mod_id", mod.id)
-        .eq("status", "paid")
-        .maybeSingle();
+    const admin = supabaseAdmin();
+
+    // =========================
+    // CEK SUDAH BAYAR
+    // =========================
+
+    const {
+      data: paidOrder,
+      error: paidError,
+    } = await admin
+      .from("orders")
+      .select("id,status")
+      .eq("user_id", user.id)
+      .eq("mod_id", mod.id)
+      .eq("status", "paid")
+      .maybeSingle();
 
     if (paidError) {
       console.error(
-        "CEK ORDER PAID ERROR:",
+        "ERROR CEK PAID ORDER:",
         paidError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Gagal memeriksa order sebelumnya.",
+          details: paidError.message,
+        },
+        { status: 500 }
       );
     }
 
     if (paidOrder) {
       return NextResponse.json(
         {
-          error: "Kamu sudah membeli mod ini.",
+          error:
+            "Kamu sudah membeli mod ini.",
           alreadyPaid: true,
           slug: mod.slug,
         },
@@ -163,80 +172,115 @@ export async function POST(req: Request) {
       );
     }
 
-    /*
-     * =========================
-     * CEK ORDER PENDING
-     * =========================
-     */
+    // =========================
+    // CEK PENDING
+    // =========================
 
-    const { data: existingOrder } =
-      await admin
-        .from("orders")
-        .select("id,status,amount")
-        .eq("user_id", user.id)
-        .eq("mod_id", mod.id)
-        .eq("status", "pending")
-        .maybeSingle();
+    const {
+      data: pendingOrder,
+      error: pendingError,
+    } = await admin
+      .from("orders")
+      .select("id,status,amount")
+      .eq("user_id", user.id)
+      .eq("mod_id", mod.id)
+      .eq("status", "pending")
+      .maybeSingle();
 
-    let orderId: string | number;
+    if (pendingError) {
+      console.error(
+        "ERROR CEK PENDING:",
+        pendingError
+      );
 
-    /*
-     * Kalau sudah ada pending,
-     * gunakan order tersebut.
-     */
-
-    if (existingOrder) {
-      orderId = existingOrder.id;
-    } else {
-      /*
-       * =========================
-       * BUAT ORDER BARU
-       * =========================
-       */
-
-      const { data: newOrder, error: insertError } =
-        await admin
-          .from("orders")
-          .insert({
-            user_id: user.id,
-            mod_id: mod.id,
-            amount,
-            status: "pending",
-          })
-          .select("id,user_id,mod_id,amount,status")
-          .single();
-
-      if (insertError || !newOrder) {
-        console.error(
-          "GAGAL MEMBUAT ORDER:",
-          insertError
-        );
-
-        return NextResponse.json(
-          {
-            error: "Gagal membuat order.",
-            details:
-              insertError?.message ||
-              "Unknown database error",
-            code:
-              insertError?.code || null,
-          },
-          { status: 500 }
-        );
-      }
-
-      orderId = newOrder.id;
+      return NextResponse.json(
+        {
+          error:
+            "Gagal memeriksa order pending.",
+          details: pendingError.message,
+        },
+        { status: 500 }
+      );
     }
 
-    /*
-     * =========================
-     * RESPONSE
-     * =========================
-     */
+    // =========================
+    // ORDER SUDAH ADA
+    // =========================
+
+    if (pendingOrder) {
+      return NextResponse.json({
+        success: true,
+        orderId: String(pendingOrder.id),
+        modId: mod.id,
+        title: mod.title,
+        amount,
+        existing: true,
+      });
+    }
+
+    // =========================
+    // BUAT ORDER
+    // =========================
+
+    const {
+      data: order,
+      error: orderError,
+    } = await admin
+      .from("orders")
+      .insert({
+        user_id: user.id,
+        mod_id: mod.id,
+        amount: amount,
+        status: "pending",
+      })
+      .select(`
+        id,
+        user_id,
+        mod_id,
+        amount,
+        status
+      `)
+      .single();
+
+    if (orderError) {
+      console.error(
+        "ERROR INSERT ORDERS:",
+        orderError
+      );
+
+      return NextResponse.json(
+        {
+          error: "Gagal membuat order.",
+          details: orderError.message,
+          code: orderError.code,
+          hint: orderError.hint,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!order) {
+      return NextResponse.json(
+        {
+          error:
+            "Order berhasil diproses tetapi data order tidak ditemukan.",
+        },
+        { status: 500 }
+      );
+    }
+
+    // =========================
+    // BERHASIL
+    // =========================
+
+    console.log(
+      "ORDER CREATED:",
+      order.id
+    );
 
     return NextResponse.json({
       success: true,
-      orderId: String(orderId),
+      orderId: String(order.id),
       modId: mod.id,
       title: mod.title,
       amount,
@@ -250,9 +294,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        error: "Terjadi kesalahan server.",
+        error:
+          "Terjadi kesalahan pada server.",
       },
       { status: 500 }
     );
   }
-    }
+      }
