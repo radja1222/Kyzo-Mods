@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 export async function POST(req: Request) {
   try {
     // =========================
-    // AUTH
+    // CEK USER LOGIN
     // =========================
 
     const supabase = await supabaseServer();
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     }
 
     // =========================
-    // FORM
+    // AMBIL MOD ID
     // =========================
 
     const form = await req.formData();
@@ -53,23 +53,24 @@ export async function POST(req: Request) {
 
     // =========================
     // CARI MOD
-    // PAKAI SERVER CLIENT
     // =========================
 
-    const { data: mod, error: modError } =
-      await supabase
-        .from("mods")
-        .select(`
-          id,
-          title,
-          slug,
-          price,
-          mod_type,
-          status
-        `)
-        .eq("id", modId)
-        .eq("status", "approved")
-        .maybeSingle();
+    const {
+      data: mod,
+      error: modError,
+    } = await supabase
+      .from("mods")
+      .select(`
+        id,
+        title,
+        slug,
+        price,
+        mod_type,
+        status
+      `)
+      .eq("id", modId)
+      .eq("status", "approved")
+      .maybeSingle();
 
     if (modError) {
       console.error(
@@ -81,6 +82,8 @@ export async function POST(req: Request) {
         {
           error: "Gagal mengambil data mod.",
           details: modError.message,
+          code: modError.code,
+          hint: modError.hint,
         },
         { status: 500 }
       );
@@ -98,7 +101,7 @@ export async function POST(req: Request) {
     }
 
     // =========================
-    // VALIDASI MOD
+    // VALIDASI MOD PAID
     // =========================
 
     if (mod.mod_type !== "paid") {
@@ -110,6 +113,10 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    // =========================
+    // VALIDASI HARGA
+    // =========================
 
     const amount = Number(mod.price);
 
@@ -124,13 +131,12 @@ export async function POST(req: Request) {
 
     // =========================
     // ADMIN CLIENT
-    // HANYA UNTUK ORDERS
     // =========================
 
     const admin = supabaseAdmin();
 
     // =========================
-    // CEK SUDAH BAYAR
+    // CEK ORDER SUDAH PAID
     // =========================
 
     const {
@@ -138,7 +144,7 @@ export async function POST(req: Request) {
       error: paidError,
     } = await admin
       .from("orders")
-      .select("id,status")
+      .select("id")
       .eq("user_id", user.id)
       .eq("mod_id", mod.id)
       .eq("status", "paid")
@@ -155,6 +161,10 @@ export async function POST(req: Request) {
           error:
             "Gagal memeriksa order sebelumnya.",
           details: paidError.message,
+          code: paidError.code,
+          hint: paidError.hint,
+          details_supabase:
+            paidError.details,
         },
         { status: 500 }
       );
@@ -173,7 +183,7 @@ export async function POST(req: Request) {
     }
 
     // =========================
-    // CEK PENDING
+    // CEK ORDER PENDING
     // =========================
 
     const {
@@ -181,7 +191,7 @@ export async function POST(req: Request) {
       error: pendingError,
     } = await admin
       .from("orders")
-      .select("id,status,amount")
+      .select("id")
       .eq("user_id", user.id)
       .eq("mod_id", mod.id)
       .eq("status", "pending")
@@ -189,7 +199,7 @@ export async function POST(req: Request) {
 
     if (pendingError) {
       console.error(
-        "ERROR CEK PENDING:",
+        "ERROR CEK PENDING ORDER:",
         pendingError
       );
 
@@ -198,16 +208,25 @@ export async function POST(req: Request) {
           error:
             "Gagal memeriksa order pending.",
           details: pendingError.message,
+          code: pendingError.code,
+          hint: pendingError.hint,
+          details_supabase:
+            pendingError.details,
         },
         { status: 500 }
       );
     }
 
     // =========================
-    // ORDER SUDAH ADA
+    // JIKA SUDAH ADA PENDING
     // =========================
 
     if (pendingOrder) {
+      console.log(
+        "Menggunakan pending order:",
+        pendingOrder.id
+      );
+
       return NextResponse.json({
         success: true,
         orderId: String(pendingOrder.id),
@@ -219,7 +238,7 @@ export async function POST(req: Request) {
     }
 
     // =========================
-    // BUAT ORDER
+    // BUAT ORDER BARU
     // =========================
 
     const {
@@ -254,6 +273,8 @@ export async function POST(req: Request) {
           details: orderError.message,
           code: orderError.code,
           hint: orderError.hint,
+          details_supabase:
+            orderError.details,
         },
         { status: 500 }
       );
@@ -263,7 +284,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Order berhasil diproses tetapi data order tidak ditemukan.",
+            "Order berhasil dibuat tetapi data order tidak ditemukan.",
         },
         { status: 500 }
       );
@@ -274,7 +295,7 @@ export async function POST(req: Request) {
     // =========================
 
     console.log(
-      "ORDER CREATED:",
+      "ORDER BERHASIL DIBUAT:",
       order.id
     );
 
@@ -284,6 +305,7 @@ export async function POST(req: Request) {
       modId: mod.id,
       title: mod.title,
       amount,
+      existing: false,
     });
 
   } catch (error) {
