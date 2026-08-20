@@ -4,6 +4,12 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: Request) {
   try {
+    /*
+     * =========================
+     * CEK USER
+     * =========================
+     */
+
     const supabase = await supabaseServer();
 
     const {
@@ -13,11 +19,17 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json(
         {
-          error: "Silakan login terlebih dahulu.",
+          error: "Kamu harus login terlebih dahulu.",
         },
         { status: 401 }
       );
     }
+
+    /*
+     * =========================
+     * AMBIL FORM
+     * =========================
+     */
 
     const form = await req.formData();
 
@@ -26,7 +38,7 @@ export async function POST(req: Request) {
     if (!modIdRaw) {
       return NextResponse.json(
         {
-          error: "Mod tidak ditemukan.",
+          error: "mod_id tidak ditemukan.",
         },
         { status: 400 }
       );
@@ -34,21 +46,31 @@ export async function POST(req: Request) {
 
     const modId = Number(modIdRaw);
 
-    if (!Number.isInteger(modId)) {
+    if (!Number.isInteger(modId) || modId <= 0) {
       return NextResponse.json(
         {
-          error: "ID mod tidak valid.",
+          error: "mod_id tidak valid.",
         },
         { status: 400 }
       );
     }
 
     /*
-     * Ambil data mod
+     * =========================
+     * ADMIN CLIENT
+     * =========================
+     */
+
+    const admin = supabaseAdmin();
+
+    /*
+     * =========================
+     * CEK MOD
+     * =========================
      */
 
     const { data: mod, error: modError } =
-      await supabase
+      await admin
         .from("mods")
         .select(`
           id,
@@ -63,7 +85,10 @@ export async function POST(req: Request) {
         .single();
 
     if (modError || !mod) {
-      console.error("MOD ERROR:", modError);
+      console.error(
+        "MOD TIDAK DITEMUKAN:",
+        modError
+      );
 
       return NextResponse.json(
         {
@@ -73,16 +98,28 @@ export async function POST(req: Request) {
       );
     }
 
+    /*
+     * =========================
+     * HARUS PAID
+     * =========================
+     */
+
     if (mod.mod_type !== "paid") {
       return NextResponse.json(
         {
-          error: "Mod ini gratis.",
+          error: "Mod ini gratis dan tidak membutuhkan pembayaran.",
         },
         { status: 400 }
       );
     }
 
-    const amount = Math.round(Number(mod.price));
+    /*
+     * =========================
+     * VALIDASI HARGA
+     * =========================
+     */
+
+    const amount = Number(mod.price);
 
     if (!Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json(
@@ -94,88 +131,70 @@ export async function POST(req: Request) {
     }
 
     /*
-     * Gunakan admin client untuk membuat order.
-     * Ini menghindari masalah RLS ketika server membuat order.
+     * =========================
+     * CEK ORDER PAID
+     * =========================
      */
 
-    const admin = supabaseAdmin();
+    const { data: paidOrder, error: paidError } =
+      await admin
+        .from("orders")
+        .select("id,status")
+        .eq("user_id", user.id)
+        .eq("mod_id", mod.id)
+        .eq("status", "paid")
+        .maybeSingle();
 
-    /*
-     * Cek apakah user sudah pernah membeli
-     */
-
-    const { data: paidOrder } = await admin
-      .from("orders")
-      .select("id,status")
-      .eq("user_id", user.id)
-      .eq("mod_id", mod.id)
-      .eq("status", "paid")
-      .maybeSingle();
+    if (paidError) {
+      console.error(
+        "CEK ORDER PAID ERROR:",
+        paidError
+      );
+    }
 
     if (paidOrder) {
-      return NextResponse.json({
-        success: true,
-        alreadyPaid: true,
-        redirectUrl: `/mod/${mod.slug}`,
-      });
+      return NextResponse.json(
+        {
+          error: "Kamu sudah membeli mod ini.",
+          alreadyPaid: true,
+          slug: mod.slug,
+        },
+        { status: 409 }
+      );
     }
 
     /*
-     * Cari order pending lama
+     * =========================
+     * CEK ORDER PENDING
+     * =========================
      */
 
-    const { data: existingOrder } = await admin
-      .from("orders")
-      .select("id,status,amount")
-      .eq("user_id", user.id)
-      .eq("mod_id", mod.id)
-      .eq("status", "pending")
-      .order("id", {
-        ascending: false,
-      })
-      .limit(1)
-      .maybeSingle();
+    const { data: existingOrder } =
+      await admin
+        .from("orders")
+        .select("id,status,amount")
+        .eq("user_id", user.id)
+        .eq("mod_id", mod.id)
+        .eq("status", "pending")
+        .maybeSingle();
 
-    let orderId: number;
+    let orderId: string | number;
+
+    /*
+     * Kalau sudah ada pending,
+     * gunakan order tersebut.
+     */
 
     if (existingOrder) {
       orderId = existingOrder.id;
-
-      /*
-       * Pastikan nominal order mengikuti harga mod terbaru.
-       */
-
-      if (
-        Math.round(Number(existingOrder.amount)) !== amount
-      ) {
-        const { error: updateError } =
-          await admin
-            .from("orders")
-            .update({
-              amount,
-            })
-            .eq("id", existingOrder.id);
-
-        if (updateError) {
-          console.error(
-            "UPDATE ORDER ERROR:",
-            updateError
-          );
-
-          return NextResponse.json(
-            {
-              error: "Gagal memperbarui order.",
-            },
-            { status: 500 }
-          );
-        }
-      }
     } else {
       /*
-       * Buat order baru
+       * =========================
+       * BUAT ORDER BARU
+       * =========================
        */
 
-      const { data: newOrder, error: orderError } =
+      const { data: newOrder, error: insertError } =
         await admin
           .from("orders")
           .insert({
@@ -184,19 +203,23 @@ export async function POST(req: Request) {
             amount,
             status: "pending",
           })
-          .select("id")
+          .select("id,user_id,mod_id,amount,status")
           .single();
 
-      if (orderError || !newOrder) {
+      if (insertError || !newOrder) {
         console.error(
-          "CREATE ORDER ERROR:",
-          orderError
+          "GAGAL MEMBUAT ORDER:",
+          insertError
         );
 
         return NextResponse.json(
           {
-            error:
-              "Gagal membuat order. Periksa tabel orders dan Supabase.",
+            error: "Gagal membuat order.",
+            details:
+              insertError?.message ||
+              "Unknown database error",
+            code:
+              insertError?.code || null,
           },
           { status: 500 }
         );
@@ -206,143 +229,18 @@ export async function POST(req: Request) {
     }
 
     /*
-     * MIDTRANS
+     * =========================
+     * RESPONSE
+     * =========================
      */
 
-    const serverKey =
-      process.env.MIDTRANS_SERVER_KEY;
-
-    if (!serverKey) {
-      console.error(
-        "MIDTRANS_SERVER_KEY belum diset."
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "MIDTRANS_SERVER_KEY belum dikonfigurasi di Vercel.",
-        },
-        { status: 500 }
-      );
-    }
-
-    const isProduction =
-      process.env.MIDTRANS_IS_PRODUCTION === "true";
-
-    const midtransUrl = isProduction
-      ? "https://app.midtrans.com/snap/v1/transactions"
-      : "https://app.sandbox.midtrans.com/snap/v1/transactions";
-
-    /*
-     * Midtrans menggunakan Basic Auth:
-     * Base64(ServerKey:)
-     */
-
-    const auth = Buffer.from(
-      `${serverKey}:`
-    ).toString("base64");
-
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      new URL(req.url).origin;
-
-    const midtransResponse = await fetch(
-      midtransUrl,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Basic ${auth}`,
-        },
-
-        body: JSON.stringify({
-          transaction_details: {
-            order_id: String(orderId),
-            gross_amount: amount,
-          },
-
-          item_details: [
-            {
-              id: String(mod.id),
-              price: amount,
-              quantity: 1,
-              name: mod.title.slice(0, 50),
-            },
-          ],
-
-          customer_details: {
-            email: user.email || undefined,
-          },
-
-          callbacks: {
-            finish: `${siteUrl}/dashboard`,
-          },
-        }),
-      }
-    );
-
-    const midtransData =
-      await midtransResponse.json();
-
-    if (!midtransResponse.ok) {
-      console.error(
-        "MIDTRANS CREATE ERROR:",
-        midtransData
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            midtransData?.error_messages?.join(
-              ", "
-            ) ||
-            midtransData?.status_message ||
-            "Gagal membuat transaksi Midtrans.",
-        },
-        {
-          status: 502,
-        }
-      );
-    }
-
-    /*
-     * Simpan reference Midtrans kalau tersedia
-     */
-
-    if (midtransData.order_id) {
-      await admin
-        .from("orders")
-        .update({
-          payment_ref: String(
-            midtransData.order_id
-          ),
-        })
-        .eq("id", orderId);
-    }
-
-    /*
-     * Redirect ke halaman pembayaran Midtrans
-     */
-
-    if (!midtransData.redirect_url) {
-      console.error(
-        "MIDTRANS RESPONSE TANPA REDIRECT URL:",
-        midtransData
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "Midtrans tidak memberikan redirect URL.",
-        },
-        { status: 502 }
-      );
-    }
-
-    return NextResponse.redirect(
-      midtransData.redirect_url
-    );
+    return NextResponse.json({
+      success: true,
+      orderId: String(orderId),
+      modId: mod.id,
+      title: mod.title,
+      amount,
+    });
 
   } catch (error) {
     console.error(
@@ -352,10 +250,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        error:
-          "Terjadi kesalahan pada server pembayaran.",
+        error: "Terjadi kesalahan server.",
       },
       { status: 500 }
     );
   }
-}
+    }
