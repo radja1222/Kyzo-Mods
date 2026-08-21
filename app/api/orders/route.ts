@@ -427,27 +427,53 @@ export async function POST(req: Request) {
       await response.json();
 
     // =========================
-    // MIDTRANS ERROR
-    // =========================
+// MIDTRANS ERROR
+// =========================
 
-    if (!response.ok) {
-      console.error(
-        "MIDTRANS ERROR:",
-        result
-      );
+if (!response.ok) {
+  console.error(
+    "========== MIDTRANS ERROR =========="
+  );
 
-      return NextResponse.redirect(
-        new URL(
-          `/checkout/${modId}?error=midtrans`,
-          req.url
-        )
-      );
-    }
+  console.error(
+    "STATUS:",
+    response.status
+  );
 
-    console.log(
-      "MIDTRANS BERHASIL:",
-      result
-    );
+  console.error(
+    "MESSAGES:",
+    JSON.stringify(
+      result?.error_messages,
+      null,
+      2
+    )
+  );
+
+  console.error(
+    "FULL RESULT:",
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+  console.error(
+    "===================================="
+  );
+
+  return NextResponse.redirect(
+    new URL(
+      `/checkout/${modId}?error=midtrans`,
+      req.url
+    )
+  );
+}
+
+console.log(
+  "MIDTRANS BERHASIL:",
+  result
+);
 
     // =========================
     // SIMPAN PAYMENT REF
